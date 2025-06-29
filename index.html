@@ -7,12 +7,17 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
   <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212;
+      color: white;
+    }
     #loading {
       position: fixed;
       top: 0; left: 0;
       width: 100vw; height: 100vh;
-      background: black;
-      color: white;
+      background: #121212;
+      color: #1DB954;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -20,30 +25,81 @@
       z-index: 50;
     }
     #profileModal {
-      background-color: rgba(0,0,0,0.8);
+      background-color: rgba(18, 18, 18, 0.9);
+    }
+    /* Abas estilo Spotify */
+    .tab-button {
+      padding: 0.5rem 1.5rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      border: 2px solid transparent;
+    }
+    .tab-button.active {
+      background-color: #1DB954;
+      color: #121212;
+      border-color: #1DB954;
+    }
+    .tab-button:not(.active):hover {
+      background-color: rgba(29, 185, 84, 0.15);
+    }
+    /* Playlist cards */
+    .playlist-card {
+      background-color: #181818;
+      border-radius: 8px;
+      padding: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: background-color 0.2s ease;
+      max-width: 200px;
+    }
+    .playlist-card:hover {
+      background-color: #282828;
+    }
+    .playlist-card img {
+      border-radius: 8px;
+      max-height: 140px;
+      object-fit: cover;
+      margin-bottom: 0.5rem;
+      width: 100%;
+    }
+    footer#player {
+      background-color: #181818;
+      box-shadow: 0 -3px 10px rgba(0,0,0,0.7);
+    }
+    footer#player p {
+      margin: 0;
+    }
+    input[type=range] {
+      accent-color: #1DB954;
+      width: 100%;
     }
   </style>
 </head>
-<body class="bg-black text-white min-h-screen flex flex-col">
+<body>
 
   <div id="loading">Carregando...</div>
 
-  <header class="p-4 flex justify-between items-center border-b border-gray-700">
-    <h1 class="text-2xl font-bold">Spotify Clone</h1>
-    <div class="flex items-center gap-3">
-      <button id="tabInicioBtn" class="px-4 py-2 rounded border border-green-500 text-green-500 font-semibold">Início</button>
-      <button id="tabCriarBtn" class="px-4 py-2 rounded border border-gray-600 text-gray-600 hover:border-green-500 hover:text-green-500 transition font-semibold">Criar</button>
-      <span id="userName" class="hidden ml-6 font-semibold"></span>
+  <header class="p-4 flex justify-between items-center border-b border-gray-800">
+    <h1 class="text-3xl font-bold" style="font-family: 'Gotham', 'Montserrat', sans-serif;">Spotify Clone</h1>
+    <nav class="flex items-center gap-4">
+      <button id="tabInicioBtn" class="tab-button active">Início</button>
+      <button id="tabCriarBtn" class="tab-button">Criar</button>
+      <span id="userName" class="ml-6 font-semibold hidden"></span>
       <button id="loginBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 transition">Entrar com Google</button>
       <button id="profileBtn" class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600 transition hidden">Perfil</button>
       <button id="logoutBtn" class="bg-red-600 px-4 py-2 rounded hover:bg-red-700 transition hidden">Sair</button>
-    </div>
+    </nav>
   </header>
 
   <!-- Modal Perfil -->
   <div id="profileModal" class="fixed inset-0 hidden flex items-center justify-center z-40">
     <div class="bg-gray-900 rounded-lg p-6 max-w-sm w-full space-y-4">
-      <h2 class="text-xl font-semibold">Perfil</h2>
+      <h2 class="text-xl font-semibold text-green-500">Perfil</h2>
       <p class="text-gray-300">Nome atual:</p>
       <p id="currentDisplayName" class="text-white font-bold text-lg"></p>
       <input id="editDisplayName" type="text" placeholder="Digite novo nome" class="w-full p-2 rounded bg-gray-800 text-white" />
@@ -52,25 +108,21 @@
     </div>
   </div>
 
-  <main class="flex-1 overflow-y-auto p-6">
+  <main class="flex-1 overflow-y-auto p-6 max-w-6xl mx-auto">
 
     <!-- Aba Início -->
     <section id="tabInicio" class="">
-      <div class="max-w-4xl mx-auto space-y-6">
+      <input id="searchInput" type="text" placeholder="Buscar música..." 
+        class="w-full p-3 rounded bg-gray-800 text-white placeholder-gray-400 mb-6" />
 
-        <input id="searchInput" type="text" placeholder="Buscar música..." 
-          class="w-full p-3 rounded bg-gray-800 text-white placeholder-gray-400" />
-
-        <h2 class="text-3xl font-bold mb-4">Playlists Disponíveis</h2>
-        <div id="musicList" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-
-      </div>
+      <h2 class="text-3xl font-bold mb-6 text-green-500">Playlists Disponíveis</h2>
+      <div id="musicList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
     </section>
 
     <!-- Aba Criar -->
     <section id="tabCriar" class="hidden max-w-lg mx-auto">
-      <form id="playlistForm" class="space-y-4 bg-gray-900 p-6 rounded shadow">
-        <h2 class="text-2xl font-bold mb-4 text-center">Criar Playlist</h2>
+      <form id="playlistForm" class="space-y-6 bg-gray-900 p-6 rounded shadow">
+        <h2 class="text-2xl font-bold mb-4 text-center text-green-500">Criar Playlist</h2>
         <input name="nome" required placeholder="Nome da música" class="w-full p-3 rounded bg-gray-800" />
         <input name="capa" type="file" accept="image/*" required class="w-full p-2 rounded bg-gray-800" />
         <input name="musica" type="file" accept="audio/*" required class="w-full p-2 rounded bg-gray-800" />
@@ -78,18 +130,18 @@
           <input type="checkbox" id="publica" class="accent-green-500" />
           Tornar playlist pública
         </label>
-        <button type="submit" class="bg-blue-600 px-4 py-3 rounded w-full font-semibold hover:bg-blue-700 transition">Criar Playlist</button>
+        <button type="submit" class="bg-green-600 px-4 py-3 rounded w-full font-semibold hover:bg-green-700 transition">Criar Playlist</button>
       </form>
     </section>
 
   </main>
 
-  <footer id="player" class="bg-gray-900 p-4 flex items-center gap-4">
+  <footer id="player" class="p-4 flex items-center gap-4">
     <img id="capa" class="w-16 h-16 rounded shadow-lg" />
-    <div>
+    <div class="flex-1">
       <p id="nomeMusica" class="font-bold text-lg">-</p>
       <p id="nomeArtista" class="text-gray-400">-</p>
-      <input id="progress" type="range" class="w-full mt-1" value="0" />
+      <input id="progress" type="range" value="0" class="mt-1" />
     </div>
     <audio id="audio" controls class="hidden"></audio>
   </footer>
@@ -151,22 +203,18 @@
       if (tab === "inicio") {
         tabInicio.classList.remove("hidden");
         tabCriar.classList.add("hidden");
-        tabInicioBtn.classList.add("border-green-500", "text-green-500");
-        tabInicioBtn.classList.remove("border-gray-600", "text-gray-600");
-        tabCriarBtn.classList.remove("border-green-500", "text-green-500");
-        tabCriarBtn.classList.add("border-gray-600", "text-gray-600");
+        tabInicioBtn.classList.add("active");
+        tabCriarBtn.classList.remove("active");
       } else {
         tabCriar.classList.remove("hidden");
         tabInicio.classList.add("hidden");
-        tabCriarBtn.classList.add("border-green-500", "text-green-500");
-        tabCriarBtn.classList.remove("border-gray-600", "text-gray-600");
-        tabInicioBtn.classList.remove("border-green-500", "text-green-500");
-        tabInicioBtn.classList.add("border-gray-600", "text-gray-600");
+        tabCriarBtn.classList.add("active");
+        tabInicioBtn.classList.remove("active");
       }
     }
 
-    tabInicioBtn.onclick = () => switchTab("inicio");
-    tabCriarBtn.onclick = () => switchTab("criar");
+    tabInicioBtn.addEventListener("click", () => switchTab("inicio"));
+    tabCriarBtn.addEventListener("click", () => switchTab("criar"));
 
     // Login Google
     loginBtn.onclick = async () => {
@@ -307,10 +355,10 @@
       }
       playlists.forEach(p => {
         const div = document.createElement("div");
-        div.className = "bg-gray-800 p-3 rounded flex flex-col items-center cursor-pointer hover:bg-gray-700 transition";
+        div.className = "playlist-card";
         div.innerHTML = `
-          <img src="${p.capa}" class="w-full rounded mb-2 max-h-40 object-cover" />
-          <p class="text-white font-semibold text-center">${p.nome}</p>
+          <img src="${p.capa}" alt="Capa da playlist ${p.nome}" />
+          <p class="text-white font-semibold text-center truncate">${p.nome}</p>
         `;
         div.onclick = () => playMusic(p);
         musicList.appendChild(div);
@@ -336,7 +384,7 @@
       audio.play();
 
       Vibrant.from(p.capa).getPalette().then((palette) => {
-        document.getElementById("player").style.backgroundColor = palette.Vibrant ? palette.Vibrant.getHex() : "#111";
+        document.getElementById("player").style.backgroundColor = palette.Vibrant ? palette.Vibrant.getHex() : "#121212";
       });
     }
 
