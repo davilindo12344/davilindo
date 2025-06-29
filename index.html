@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Clone Firebase</title>
+  <title>Spotify Clone Firebase - Abas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
   <style>
@@ -31,7 +31,9 @@
   <header class="p-4 flex justify-between items-center border-b border-gray-700">
     <h1 class="text-2xl font-bold">Spotify Clone</h1>
     <div class="flex items-center gap-3">
-      <span id="userName" class="hidden"></span>
+      <button id="tabInicioBtn" class="px-4 py-2 rounded border border-green-500 text-green-500 font-semibold">Início</button>
+      <button id="tabCriarBtn" class="px-4 py-2 rounded border border-gray-600 text-gray-600 hover:border-green-500 hover:text-green-500 transition font-semibold">Criar</button>
+      <span id="userName" class="hidden ml-6 font-semibold"></span>
       <button id="loginBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 transition">Entrar com Google</button>
       <button id="profileBtn" class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600 transition hidden">Perfil</button>
       <button id="logoutBtn" class="bg-red-600 px-4 py-2 rounded hover:bg-red-700 transition hidden">Sair</button>
@@ -50,23 +52,34 @@
     </div>
   </div>
 
-  <main class="flex-1 overflow-y-auto p-6 space-y-6">
+  <main class="flex-1 overflow-y-auto p-6">
 
-    <form id="playlistForm" class="space-y-4 max-w-lg mx-auto bg-gray-900 p-6 rounded shadow">
-      <h2 class="text-2xl font-bold mb-4 text-center">Criar Playlist</h2>
-      <input name="nome" required placeholder="Nome da música" class="w-full p-3 rounded bg-gray-800" />
-      <input name="capa" type="file" accept="image/*" required class="w-full p-2 rounded bg-gray-800" />
-      <input name="musica" type="file" accept="audio/*" required class="w-full p-2 rounded bg-gray-800" />
-      <label class="flex items-center gap-2 text-gray-300">
-        <input type="checkbox" id="publica" class="accent-green-500" />
-        Tornar playlist pública
-      </label>
-      <button type="submit" class="bg-blue-600 px-4 py-3 rounded w-full font-semibold hover:bg-blue-700 transition">Criar Playlist</button>
-    </form>
+    <!-- Aba Início -->
+    <section id="tabInicio" class="">
+      <div class="max-w-4xl mx-auto space-y-6">
 
-    <section class="max-w-4xl mx-auto">
-      <h2 class="text-3xl font-bold mb-6 text-center">Playlists Disponíveis</h2>
-      <div id="musicList" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+        <input id="searchInput" type="text" placeholder="Buscar música..." 
+          class="w-full p-3 rounded bg-gray-800 text-white placeholder-gray-400" />
+
+        <h2 class="text-3xl font-bold mb-4">Playlists Disponíveis</h2>
+        <div id="musicList" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+
+      </div>
+    </section>
+
+    <!-- Aba Criar -->
+    <section id="tabCriar" class="hidden max-w-lg mx-auto">
+      <form id="playlistForm" class="space-y-4 bg-gray-900 p-6 rounded shadow">
+        <h2 class="text-2xl font-bold mb-4 text-center">Criar Playlist</h2>
+        <input name="nome" required placeholder="Nome da música" class="w-full p-3 rounded bg-gray-800" />
+        <input name="capa" type="file" accept="image/*" required class="w-full p-2 rounded bg-gray-800" />
+        <input name="musica" type="file" accept="audio/*" required class="w-full p-2 rounded bg-gray-800" />
+        <label class="flex items-center gap-2 text-gray-300">
+          <input type="checkbox" id="publica" class="accent-green-500" />
+          Tornar playlist pública
+        </label>
+        <button type="submit" class="bg-blue-600 px-4 py-3 rounded w-full font-semibold hover:bg-blue-700 transition">Criar Playlist</button>
+      </form>
     </section>
 
   </main>
@@ -113,6 +126,7 @@
     const saveDisplayName = document.getElementById("saveDisplayName");
     const closeProfile = document.getElementById("closeProfile");
     const profileModal = document.getElementById("profileModal");
+    const loading = document.getElementById("loading");
 
     const playlistForm = document.getElementById("playlistForm");
     const publicaCheck = document.getElementById("publica");
@@ -122,9 +136,37 @@
     const artista = document.getElementById("nomeArtista");
     const audio = document.getElementById("audio");
     const progress = document.getElementById("progress");
-    const loading = document.getElementById("loading");
+
+    const tabInicioBtn = document.getElementById("tabInicioBtn");
+    const tabCriarBtn = document.getElementById("tabCriarBtn");
+    const tabInicio = document.getElementById("tabInicio");
+    const tabCriar = document.getElementById("tabCriar");
+    const searchInput = document.getElementById("searchInput");
 
     let userUID = null;
+    let playlistsCache = [];
+
+    // Função para alternar abas
+    function switchTab(tab) {
+      if (tab === "inicio") {
+        tabInicio.classList.remove("hidden");
+        tabCriar.classList.add("hidden");
+        tabInicioBtn.classList.add("border-green-500", "text-green-500");
+        tabInicioBtn.classList.remove("border-gray-600", "text-gray-600");
+        tabCriarBtn.classList.remove("border-green-500", "text-green-500");
+        tabCriarBtn.classList.add("border-gray-600", "text-gray-600");
+      } else {
+        tabCriar.classList.remove("hidden");
+        tabInicio.classList.add("hidden");
+        tabCriarBtn.classList.add("border-green-500", "text-green-500");
+        tabCriarBtn.classList.remove("border-gray-600", "text-gray-600");
+        tabInicioBtn.classList.remove("border-green-500", "text-green-500");
+        tabInicioBtn.classList.add("border-gray-600", "text-gray-600");
+      }
+    }
+
+    tabInicioBtn.onclick = () => switchTab("inicio");
+    tabCriarBtn.onclick = () => switchTab("criar");
 
     // Login Google
     loginBtn.onclick = async () => {
@@ -160,6 +202,8 @@
         userNameEl.textContent = novoNome;
         currentDisplayName.textContent = novoNome;
         alert("Nome atualizado com sucesso!");
+        profileModal.classList.add("hidden");
+        loadPlaylists();
       } catch (error) {
         console.error("Erro ao atualizar nome:", error);
         alert("Erro ao atualizar nome: " + error.message);
@@ -175,7 +219,8 @@
         logoutBtn.classList.remove("hidden");
         profileBtn.classList.remove("hidden");
         loading.style.display = "none";
-        loadPlaylists();
+        switchTab("inicio");
+        await loadPlaylists();
       } else {
         userUID = null;
         userNameEl.textContent = "";
@@ -184,6 +229,7 @@
         logoutBtn.classList.add("hidden");
         profileBtn.classList.add("hidden");
         musicList.innerHTML = "";
+        loading.style.display = "none";
       }
     });
 
@@ -228,6 +274,7 @@
 
         playlistForm.reset();
         loadPlaylists();
+        switchTab("inicio");
       } catch (error) {
         console.error("Erro ao criar playlist:", error);
         alert("Erro ao criar playlist: " + error.message);
@@ -238,23 +285,48 @@
       }
     };
 
+    // Carregar playlists e cachear
     async function loadPlaylists() {
       const snapshot = await db.collection("playlists").get();
-      musicList.innerHTML = "";
+      playlistsCache = [];
       snapshot.forEach(doc => {
         const p = doc.data();
         if (p.uid === userUID || p.publica) {
-          const div = document.createElement("div");
-          div.className = "bg-gray-800 p-3 rounded flex flex-col items-center cursor-pointer hover:bg-gray-700 transition";
-          div.innerHTML = `
-            <img src="${p.capa}" class="w-full rounded mb-2 max-h-40 object-cover" />
-            <p class="text-white font-semibold text-center">${p.nome}</p>
-          `;
-          div.onclick = () => playMusic(p);
-          musicList.appendChild(div);
+          playlistsCache.push(p);
         }
       });
+      renderPlaylists(playlistsCache);
     }
+
+    // Renderizar playlists com filtro busca
+    function renderPlaylists(playlists) {
+      musicList.innerHTML = "";
+      if (playlists.length === 0) {
+        musicList.innerHTML = "<p class='text-center text-gray-400'>Nenhuma playlist encontrada.</p>";
+        return;
+      }
+      playlists.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "bg-gray-800 p-3 rounded flex flex-col items-center cursor-pointer hover:bg-gray-700 transition";
+        div.innerHTML = `
+          <img src="${p.capa}" class="w-full rounded mb-2 max-h-40 object-cover" />
+          <p class="text-white font-semibold text-center">${p.nome}</p>
+        `;
+        div.onclick = () => playMusic(p);
+        musicList.appendChild(div);
+      });
+    }
+
+    // Buscar playlists pelo nome
+    searchInput.addEventListener("input", () => {
+      const term = searchInput.value.trim().toLowerCase();
+      if (!term) {
+        renderPlaylists(playlistsCache);
+        return;
+      }
+      const filtered = playlistsCache.filter(p => p.nome.toLowerCase().includes(term));
+      renderPlaylists(filtered);
+    });
 
     function playMusic(p) {
       audio.src = p.musica;
