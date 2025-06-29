@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,24 +7,44 @@
   <title>Spotify Clone Firebase</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-  <script src="main.js" defer></script>
+  <style>
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: black;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      z-index: 50;
+    }
+  </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
+
+  <div id="loading">Carregando...</div>
+
   <header class="p-4 flex justify-between items-center">
     <h1 class="text-xl font-bold">Spotify Clone</h1>
     <div>
-      <span id="userName"></span>
-      <button id="loginBtn" class="bg-green-500 px-3 py-1 rounded">Login Google</button>
-      <button id="logoutBtn" class="bg-red-500 px-3 py-1 rounded hidden">Logout</button>
+      <button id="profileBtn" class="bg-gray-700 px-2 py-1 rounded">Perfil</button>
     </div>
   </header>
 
+  <div id="profileModal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 hidden flex-col items-center justify-center z-40">
+    <div class="bg-gray-800 p-6 rounded text-center space-y-4">
+      <p id="userName" class="text-lg font-bold">Usuário</p>
+      <button id="logoutBtn" class="bg-red-500 px-3 py-1 rounded">Sair</button>
+      <button id="closeProfile" class="text-gray-300 underline">Fechar</button>
+    </div>
+  </div>
+
   <main class="px-4 space-y-6 flex-1 overflow-y-auto">
-    <form id="playlistForm" class="space-y-3 hidden">
+    <form id="playlistForm" class="space-y-3">
       <input name="nome" required placeholder="Nome da música" class="w-full p-2 rounded bg-gray-800" />
       <input name="capa" type="file" accept="image/*" required class="w-full p-2 rounded bg-gray-800" />
       <input name="musica" type="file" accept="audio/*" required class="w-full p-2 rounded bg-gray-800" />
@@ -35,7 +56,7 @@
     </form>
 
     <section>
-      <h2 class="text-lg font-bold mb-2">Playlists Disponíveis</h2>
+      <h2 class="text-lg font-bold mb-2">Playlists</h2>
       <div id="musicList" class="space-y-2"></div>
     </section>
   </main>
@@ -51,5 +72,124 @@
     <input id="progress" type="range" class="w-full mt-2" value="0" />
     <audio id="audio" controls class="w-full mt-2"></audio>
   </footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7n1M1DFVZrkOqEB6WAlTeg_qL4yYvTxs",
+      authDomain: "spotify-eaac3.firebaseapp.com",
+      projectId: "spotify-eaac3",
+      storageBucket: "spotify-eaac3.appspot.com",
+      messagingSenderId: "262950105793",
+      appId: "1:262950105793:web:87ca0380049c7de4649a40",
+      measurementId: "G-4LCHFJSH37"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    const userNameEl = document.getElementById("userName");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const playlistForm = document.getElementById("playlistForm");
+    const musicList = document.getElementById("musicList");
+    const capa = document.getElementById("capa");
+    const nome = document.getElementById("nomeMusica");
+    const artista = document.getElementById("nomeArtista");
+    const audio = document.getElementById("audio");
+    const bar = document.getElementById("progress");
+    const publicaCheck = document.getElementById("publica");
+
+    let userUID = null;
+
+    document.getElementById("profileBtn").onclick = () => {
+      document.getElementById("profileModal").classList.remove("hidden");
+    };
+    document.getElementById("closeProfile").onclick = () => {
+      document.getElementById("profileModal").classList.add("hidden");
+    };
+
+    logoutBtn.onclick = () => auth.signOut();
+
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        userUID = user.uid;
+        userNameEl.textContent = user.displayName;
+        loadPlaylists();
+        document.getElementById("loading").style.display = "none";
+      } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
+      }
+    });
+
+    playlistForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const nome = playlistForm.nome.value;
+      const capaFile = playlistForm.capa.files[0];
+      const musicaFile = playlistForm.musica.files[0];
+      const isPublica = publicaCheck.checked;
+
+      const capaRef = storage.ref(`capas/${capaFile.name}`);
+      const musicaRef = storage.ref(`musicas/${musicaFile.name}`);
+
+      await capaRef.put(capaFile);
+      await musicaRef.put(musicaFile);
+
+      const capaURL = await capaRef.getDownloadURL();
+      const musicaURL = await musicaRef.getDownloadURL();
+
+      await db.collection("playlists").add({
+        uid: userUID,
+        nome,
+        artista: userNameEl.textContent,
+        capa: capaURL,
+        musica: musicaURL,
+        publica: isPublica
+      });
+
+      playlistForm.reset();
+      loadPlaylists();
+    };
+
+    async function loadPlaylists() {
+      const snap = await db.collection("playlists").get();
+      musicList.innerHTML = "";
+      snap.forEach(doc => {
+        const p = doc.data();
+        if (p.uid === userUID || p.publica) {
+          const div = document.createElement("div");
+          div.className = "bg-gray-800 p-3 rounded flex items-center justify-between";
+          div.innerHTML = `
+            <div class="flex items-center gap-3 cursor-pointer" onclick='playMusic(${JSON.stringify(p)})'>
+              <img src="${p.capa}" class="w-14 h-14 rounded" />
+              <div><p class="font-bold">${p.nome}</p></div>
+            </div>
+          `;
+          musicList.appendChild(div);
+        }
+      });
+    }
+
+    function playMusic(p) {
+      audio.src = p.musica;
+      nome.textContent = p.nome;
+      artista.textContent = p.artista || "-";
+      capa.src = p.capa;
+      audio.play();
+
+      Vibrant.from(p.capa).getPalette().then((palette) => {
+        document.getElementById("player").style.backgroundColor = palette.Vibrant.getHex();
+      });
+    }
+
+    audio.ontimeupdate = () => { bar.value = audio.currentTime; };
+    audio.onloadedmetadata = () => { bar.max = audio.duration; };
+    bar.oninput = () => { audio.currentTime = bar.value; };
+  </script>
 </body>
 </html>
