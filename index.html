@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spotify Clone Melhorado</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
+  <style>
+    /* Suave transição em tudo */
+    * {
+      transition: all 0.3s ease;
+    }
+    /* Scroll suave para melhor UX */
+    html {
+      scroll-behavior: smooth;
+    }
+    /* Sombra mais forte e arredondado nos cards */
+    .playlist-card {
+      box-shadow: 0 4px 15px rgb(30 215 96 / 0.5);
+      border-radius: 1rem;
+      background: #121212;
+      cursor: pointer;
+    }
+    /* Hover eleva e aumenta a sombra */
+    .playlist-card:hover {
+      transform: translateY(-6px) scale(1.03);
+      box-shadow: 0 8px 30px rgb(30 215 96 / 0.8);
+    }
+    /* Player com gradiente suave e borda arredondada */
+    footer#player {
+      background: linear-gradient(90deg, #1DB954, #1ed760cc);
+      border-radius: 0.75rem 0.75rem 0 0;
+      box-shadow: 0 -5px 15px #1DB954aa;
+      color: #fff;
+    }
+    /* Botões com hover e foco */
+    button {
+      background-color: #1DB954;
+      border-radius: 9999px;
+      padding: 0.5rem 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover, button:focus {
+      background-color: #17a647;
+      outline: none;
+    }
+    /* Barra de progresso personalizada */
+    input[type="range"] {
+      -webkit-appearance: none;
+      height: 8px;
+      border-radius: 5px;
+      background: #333;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #1DB954;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 8px #1DB954;
+      transition: background 0.3s ease;
+      margin-top: -6px;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #17a647;
+    }
+  </style>
+</head>
+<body class="bg-black text-white min-h-screen flex flex-col">
+  <header class="p-6 flex justify-between items-center border-b border-gray-800">
+    <h1 class="text-3xl font-extrabold">Spotify Clone</h1>
+    <div>
+      <span id="userName" class="mr-4 font-semibold"></span>
+      <button id="loginBtn">Login Google</button>
+      <button id="logoutBtn" class="hidden">Logout</button>
+    </div>
+  </header>
+
+  <main class="flex-1 px-8 py-6 overflow-auto">
+    <form id="playlistForm" class="space-y-4 max-w-md mx-auto hidden">
+      <input name="nome" required placeholder="Nome da música" class="w-full p-3 rounded bg-gray-900 text-white" />
+      <input name="artista" required placeholder="Artista" class="w-full p-3 rounded bg-gray-900 text-white" />
+      <input name="capa" type="file" accept="image/*" required class="w-full text-gray-200" />
+      <input name="musica" type="file" accept="audio/*" required class="w-full text-gray-200" />
+      <label class="flex items-center gap-3 text-gray-300">
+        <input type="checkbox" id="publica" class="accent-green-500" />
+        Tornar playlist pública
+      </label>
+      <button type="submit" class="w-full">Criar Playlist</button>
+    </form>
+
+    <section>
+      <h2 class="text-2xl font-extrabold mb-6 text-center">Playlists Disponíveis</h2>
+      <div id="musicList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 max-w-5xl mx-auto"></div>
+    </section>
+  </main>
+
+  <footer id="player" class="fixed bottom-0 left-0 right-0 p-5 flex flex-col md:flex-row items-center gap-5 md:gap-8 z-50">
+    <div class="flex items-center gap-4">
+      <img id="capa" class="w-20 h-20 rounded-xl shadow-lg" />
+      <div>
+        <p id="nomeMusica" class="font-extrabold text-xl truncate max-w-xs">-</p>
+        <p id="nomeArtista" class="text-green-200 truncate max-w-xs">-</p>
+      </div>
+    </div>
+    <input id="progress" type="range" class="flex-grow h-2 rounded-full" value="0" />
+    <audio id="audio" class="hidden"></audio>
+    <button id="btnPlayPause" aria-label="Play/Pause" class="text-2xl hover:text-green-900 focus:outline-none">
+      <i id="iconPlayPause" class="fas fa-play"></i>
+    </button>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, getDocs, where, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    import Vibrant from "https://cdn.jsdelivr.net/npm/node-vibrant@3.2.0/dist/vibrant.min.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7n1M1DFVZrkOqEB6WAlTeg_qL4yYvTxs",
+      authDomain: "spotify-eaac3.firebaseapp.com",
+      projectId: "spotify-eaac3",
+      storageBucket: "spotify-eaac3.appspot.com",
+      messagingSenderId: "262950105793",
+      appId: "1:262950105793:web:87ca0380049c7de4649a40",
+      measurementId: "G-4LCHFJSH37"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db = getFirestore();
+    const storage = getStorage();
+
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userName = document.getElementById("userName");
+    const form = document.getElementById("playlistForm");
+    const musicList = document.getElementById("musicList");
+    const player = document.getElementById("player");
+    const capa = document.getElementById("capa");
+    const nomeMusica = document.getElementById("nomeMusica");
+    const nomeArtista = document.getElementById("nomeArtista");
+    const audio = document.getElementById("audio");
+    const progress = document.getElementById("progress");
+    const publicaCheck = document.getElementById("publica");
+    const btnPlayPause = document.getElementById("btnPlayPause");
+    const iconPlayPause = document.getElementById("iconPlayPause");
+
+    let currentUser = null;
+    let currentDocId = null;
+    let isPlaying = false;
+
+    loginBtn.onclick = () => {
+      const provider = new GoogleAuthProvider();
+      signInWithPopup(auth, provider);
+    };
+
+    logoutBtn.onclick = () => {
+      signOut(auth);
+    };
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        currentUser = user;
+        userName.textContent = user.displayName;
+        loginBtn.classList.add("hidden");
+        logoutBtn.classList.remove("hidden");
+        form.classList.remove("hidden");
+        loadPlaylists();
+      } else {
+        currentUser = null;
+        userName.textContent = "";
+        loginBtn.classList.remove("hidden");
+        logoutBtn.classList.add("hidden");
+        form.classList.add("hidden");
+        musicList.innerHTML = "";
+        stopAudio();
+      }
+    });
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const nome = form.nome.value.trim();
+      const artista = form.artista.value.trim();
+      const capaFile = form.capa.files[0];
+      const musicaFile = form.musica.files[0];
+      const isPublica = publicaCheck.checked;
+
+      if (!nome || !artista || !capaFile || !musicaFile) {
+        alert("Preencha todos os campos!");
+        return;
+      }
+
+      try {
+        const capaRef = ref(storage, `capas/${Date.now()}_${capaFile.name}`);
+        const musicaRef = ref(storage, `musicas/${Date.now()}_${musicaFile.name}`);
+
+        await uploadBytes(capaRef, capaFile);
+        await uploadBytes(musicaRef, musicaFile);
+
+        const capaURL = await getDownloadURL(capaRef);
+        const musicaURL = await getDownloadURL(musicaRef);
+
+        await addDoc(collection(db, "playlists"), {
+          uid: currentUser.uid,
+          nome,
+          artista,
+          capa: capaURL,
+          musica: musicaURL,
+          publica: isPublica,
+          createdAt: Date.now()
+        });
+
+        form.reset();
+        loadPlaylists();
+      } catch (error) {
+        alert("Erro ao enviar arquivos: " + error.message);
+      }
+    };
+
+    async function loadPlaylists() {
+      const q = query(collection(db, "playlists"), where("publica", "==", true));
+      const privateQ = query(collection(db, "playlists"), where("uid", "==", currentUser.uid));
+      const publicSnap = await getDocs(q);
+      const privateSnap = await getDocs(privateQ);
+
+      musicList.innerHTML = "";
+
+      // Juntar privadas e públicas (evitando duplicados)
+      const playlistsMap = new Map();
+
+      publicSnap.forEach(doc => playlistsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+      privateSnap.forEach(doc => playlistsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+
+      playlistsMap.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "playlist-card p-4 flex items-center gap-4";
+
+        div.innerHTML = `
+          <img src="${p.capa}" alt="${p.nome}" class="w-20 h-20 rounded-lg shadow" />
+          <div class="flex-1 overflow-hidden">
+            <p class="font-bold text-lg truncate">${p.nome}</p>
+            <p class="text-green-400 truncate">${p.artista}</p>
+          </div>
+          ${p.uid === currentUser.uid ? `<button class="text-red-500 font-bold hover:text-red-400" aria-label='Excluir playlist'>Excluir</button>` : ''}
+        `;
+
+        div.querySelector("img").onclick = () => playMusic(p);
+        div.querySelector("p").onclick = () => playMusic(p);
+
+        if (p.uid === currentUser.uid) {
+          div.querySelector("button").onclick = async () => {
+            if (confirm("Deseja realmente excluir essa playlist?")) {
+              await deleteDoc(doc(db, "playlists", p.id));
+              loadPlaylists();
+              if (currentDocId === p.id) stopAudio();
+            }
+          };
+        }
+
+        musicList.appendChild(div);
+      });
+    }
+
+    function playMusic(p) {
+      audio.src = p.musica;
+      nomeMusica.textContent = p.nome;
+      nomeArtista.textContent = p.artista;
+      capa.src = p.capa;
+      currentDocId = p.id;
+      audio.play();
+      isPlaying = true;
+      iconPlayPause.className = "fas fa-pause";
+
+      Vibrant.from(p.capa).getPalette().then(palette => {
+        player.style.background = `linear-gradient(90deg, ${palette.Vibrant.hex} 0%, #000 100%)`;
+      });
+    }
+
+    function stopAudio() {
+      audio.pause();
+      audio.src = "";
+      nomeMusica.textContent = "-";
+      nomeArtista.textContent = "-";
+      capa.src = "";
+      iconPlayPause.className = "fas fa-play";
+      isPlaying = false;
+      player.style.background = "#121212";
+    }
+
+    btnPlayPause.onclick = () => {
+      if (!audio.src) return alert("Selecione uma música para tocar.");
+      if (isPlaying) {
+        audio.pause();
+        iconPlayPause.className = "fas fa-play";
+      } else {
+        audio.play();
+        iconPlayPause.className = "fas fa-pause";
+      }
+      isPlaying = !isPlaying;
+    };
+
+    audio.ontimeupdate = () => {
+      progress.value = audio.currentTime;
+    };
+
+    audio.onloadedmetadata = () => {
+      progress.max = audio.duration;
+    };
+
+    progress.oninput = () => {
+      audio.currentTime = progress.value;
+    };
+  </script>
+</body>
+</html>
