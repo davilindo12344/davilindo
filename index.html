@@ -1,255 +1,52 @@
-<!DOCTYPE html>
-<html lang="pt-BR" class="scroll-smooth">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Clone Firebase</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
-  <style>
-    body {
-      background: linear-gradient(135deg, #121212 0%, #1e1e1e 100%);
-      color: #eee;
-      font-family: 'Poppins', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    #profileModal {
-      position: fixed;
-      top:0; left:0; width:100vw; height:100vh;
-      background: rgba(18, 18, 18, 0.9);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-    }
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #222;
-    }
-    ::-webkit-scrollbar-thumb {
-      background-color: #1DB954;
-      border-radius: 10px;
-    }
-  </style>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet" />
-</head>
-<body>
+playlistForm.onsubmit = async (e) => {
+  e.preventDefault();
 
-  <header class="p-6 flex justify-between items-center bg-gradient-to-r from-[#1DB954] to-[#1ED760] shadow-lg sticky top-0 z-50">
-    <h1 class="text-3xl font-bold tracking-wide drop-shadow-lg text-white select-none">Spotify Clone</h1>
-    <div>
-      <button id="profileBtn" 
-        class="bg-white text-[#1DB954] font-semibold px-5 py-2 rounded-full shadow-md hover:brightness-90 transition focus:outline-none focus:ring-2 focus:ring-[#1DB954]">
-        Perfil
-      </button>
-    </div>
-  </header>
+  const nomeMusica = playlistForm.nome.value.trim();
+  const capaFile = playlistForm.capa.files[0];
+  const musicaFile = playlistForm.musica.files[0];
+  const isPublica = publicaCheck.checked;
 
-  <div id="profileModal" class="flex">
-    <div class="bg-[#121212] p-8 rounded-2xl shadow-2xl max-w-xs w-full text-center space-y-6">
-      <p id="userName" class="text-2xl font-semibold text-[#1DB954] truncate select-text">Usuário</p>
-      <button id="logoutBtn" 
-        class="bg-[#E63946] text-white font-semibold px-6 py-2 rounded-full shadow-md hover:bg-[#D62828] transition focus:outline-none focus:ring-2 focus:ring-[#E63946] w-full">
-        Sair
-      </button>
-      <button id="closeProfile" 
-        class="text-gray-400 hover:text-gray-300 underline cursor-pointer select-none">
-        Fechar
-      </button>
-    </div>
-  </div>
+  if (!nomeMusica || !capaFile || !musicaFile) {
+    alert("Preencha todos os campos!");
+    return;
+  }
 
-  <main class="px-6 py-8 flex-grow max-w-4xl mx-auto w-full">
-    <form id="playlistForm" class="space-y-5 bg-[#181818] rounded-3xl p-8 shadow-xl max-w-lg mx-auto">
-      <input name="nome" required placeholder="Nome da música" 
-        class="w-full p-3 rounded-lg bg-[#282828] placeholder-gray-400 text-white focus:outline-none focus:ring-2 focus:ring-[#1DB954] font-semibold" />
-      <input name="capa" type="file" accept="image/*" required 
-        class="w-full text-gray-300 file:bg-[#1DB954] file:text-white file:px-4 file:py-2 file:rounded-full file:border-none cursor-pointer" />
-      <input name="musica" type="file" accept="audio/*" required 
-        class="w-full text-gray-300 file:bg-[#1DB954] file:text-white file:px-4 file:py-2 file:rounded-full file:border-none cursor-pointer" />
-      <label class="flex items-center gap-3 text-gray-300 select-none font-medium">
-        <input type="checkbox" id="publica" class="accent-[#1DB954] w-5 h-5 cursor-pointer" />
-        Tornar playlist pública
-      </label>
-      <button type="submit" 
-        class="bg-[#1DB954] w-full py-3 rounded-full font-bold text-black shadow-lg hover:bg-[#1ed760] transition focus:outline-none focus:ring-4 focus:ring-[#1DB954]/50">
-        Criar Playlist
-      </button>
-    </form>
+  try {
+    // Desabilita botão para evitar múltiplos envios
+    const btn = playlistForm.querySelector("button[type='submit']");
+    btn.disabled = true;
+    btn.textContent = "Enviando...";
 
-    <section class="mt-12 max-w-lg mx-auto">
-      <h2 class="text-2xl font-bold mb-6 text-white tracking-wide">Playlists</h2>
-      <div id="musicList" class="space-y-4"></div>
-    </section>
-  </main>
+    // Prefixa os nomes dos arquivos para evitar sobrescritas
+    const timestamp = Date.now();
+    const capaRef = storage.ref(`capas/${timestamp}_${capaFile.name}`);
+    const musicaRef = storage.ref(`musicas/${timestamp}_${musicaFile.name}`);
 
-  <footer id="player" 
-    class="bg-gradient-to-r from-[#1DB954] to-[#1ED760] p-6 flex items-center gap-5 max-w-4xl mx-auto rounded-t-3xl shadow-xl sticky bottom-0 z-40">
-    <img id="capa" class="w-20 h-20 rounded-xl shadow-lg object-cover" src="" alt="Capa da música" />
-    <div class="flex-1 flex flex-col justify-center min-w-0">
-      <p id="nomeMusica" class="font-bold text-black text-lg truncate select-text">-</p>
-      <p id="nomeArtista" class="text-black text-sm truncate select-text opacity-80">-</p>
-      <input id="progress" type="range" class="w-full mt-3 rounded-lg" value="0" min="0" step="0.1" />
-      <audio id="audio" controls class="w-full mt-2 rounded-lg outline-none" style="filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));"></audio>
-    </div>
-  </footer>
+    await capaRef.put(capaFile);
+    await musicaRef.put(musicaFile);
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-  <script>
-    // Configuração Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyA7n1M1DFVZrkOqEB6WAlTeg_qL4yYvTxs",
-      authDomain: "spotify-eaac3.firebaseapp.com",
-      projectId: "spotify-eaac3",
-      storageBucket: "spotify-eaac3.appspot.com",
-      messagingSenderId: "262950105793",
-      appId: "1:262950105793:web:87ca0380049c7de4649a40",
-      measurementId: "G-4LCHFJSH37"
-    };
+    const capaURL = await capaRef.getDownloadURL();
+    const musicaURL = await musicaRef.getDownloadURL();
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-
-    // Elementos
-    const userNameEl = document.getElementById("userName");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const playlistForm = document.getElementById("playlistForm");
-    const musicList = document.getElementById("musicList");
-    const capa = document.getElementById("capa");
-    const nome = document.getElementById("nomeMusica");
-    const artista = document.getElementById("nomeArtista");
-    const audio = document.getElementById("audio");
-    const bar = document.getElementById("progress");
-    const publicaCheck = document.getElementById("publica");
-    const profileBtn = document.getElementById("profileBtn");
-    const profileModal = document.getElementById("profileModal");
-    const closeProfile = document.getElementById("closeProfile");
-
-    let userUID = null;
-
-    // Abrir/fechar modal perfil
-    profileBtn.onclick = () => profileModal.style.display = "flex";
-    closeProfile.onclick = () => profileModal.style.display = "none";
-
-    // Logout
-    logoutBtn.onclick = () => auth.signOut();
-
-    // Login automático
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        userUID = user.uid;
-        userNameEl.textContent = user.displayName || "Usuário";
-        playlistForm.style.display = "block";
-        loadPlaylists();
-      } else {
-        userUID = null;
-        userNameEl.textContent = "";
-        playlistForm.style.display = "none";
-        musicList.innerHTML = "";
-        const provider = new firebase.auth.GoogleAuthProvider();
-        try {
-          await auth.signInWithPopup(provider);
-        } catch (error) {
-          alert("Erro no login: " + error.message);
-        }
-      }
+    await db.collection("playlists").add({
+      uid: userUID,
+      nome: nomeMusica,
+      artista: userNameEl.textContent,
+      capa: capaURL,
+      musica: musicaURL,
+      publica: isPublica
     });
 
-    // Criar playlist
-    playlistForm.onsubmit = async (e) => {
-      e.preventDefault();
-      const nomeMusica = playlistForm.nome.value.trim();
-      const capaFile = playlistForm.capa.files[0];
-      const musicaFile = playlistForm.musica.files[0];
-      const isPublica = publicaCheck.checked;
+    alert("Playlist criada com sucesso!");
 
-      if (!nomeMusica || !capaFile || !musicaFile) {
-        alert("Preencha todos os campos!");
-        return;
-      }
-
-      // Upload capa e música
-      const timestamp = Date.now();
-      const capaRef = storage.ref(`capas/${timestamp}_${capaFile.name}`);
-      const musicaRef = storage.ref(`musicas/${timestamp}_${musicaFile.name}`);
-
-      await capaRef.put(capaFile);
-      await musicaRef.put(musicaFile);
-
-      const capaURL = await capaRef.getDownloadURL();
-      const musicaURL = await musicaRef.getDownloadURL();
-
-      await db.collection("playlists").add({
-        uid: userUID,
-        nome: nomeMusica,
-        artista: userNameEl.textContent,
-        capa: capaURL,
-        musica: musicaURL,
-        publica: isPublica
-      });
-
-      playlistForm.reset();
-      loadPlaylists();
-    };
-
-    // Carregar playlists do Firestore
-    async function loadPlaylists() {
-      const snapshot = await db.collection("playlists").get();
-      musicList.innerHTML = "";
-
-      snapshot.forEach(doc => {
-        const p = doc.data();
-        if (p.uid === userUID || p.publica) {
-          const div = document.createElement("div");
-          div.className = "bg-[#282828] p-4 rounded-2xl flex items-center justify-between cursor-pointer shadow-md hover:shadow-lg transition";
-          div.innerHTML = `
-            <div class="flex items-center gap-4 min-w-0">
-              <img src="${p.capa}" class="w-16 h-16 rounded-xl object-cover shadow-lg" alt="Capa da música"/>
-              <div class="truncate">
-                <p class="font-semibold text-white truncate">${p.nome}</p>
-                <p class="text-gray-400 truncate text-sm">${p.artista}</p>
-              </div>
-            </div>
-          `;
-          div.onclick = () => playMusic(p);
-          musicList.appendChild(div);
-        }
-      });
-    }
-
-    // Tocar música selecionada
-    function playMusic(p) {
-      audio.src = p.musica;
-      nome.textContent = p.nome;
-      artista.textContent = p.artista || "-";
-      capa.src = p.capa;
-      audio.play();
-
-      Vibrant.from(p.capa).getPalette().then((palette) => {
-        if(palette.Vibrant) {
-          document.getElementById("player").style.background = palette.Vibrant.getHex();
-          document.getElementById("player").style.color = "black";
-        } else {
-          document.getElementById("player").style.background = "#1DB954";
-          document.getElementById("player").style.color = "black";
-        }
-      });
-    }
-
-    // Atualizar barra de progresso
-    audio.ontimeupdate = () => { bar.value = audio.currentTime; };
-    audio.onloadedmetadata = () => { bar.max = audio.duration; };
-    bar.oninput = () => { audio.currentTime = bar.value; };
-  </script>
-
-</body>
-</html>
+    playlistForm.reset();
+    loadPlaylists();
+  } catch (error) {
+    console.error("Erro ao criar playlist:", error);
+    alert("Erro ao criar playlist: " + error.message);
+  } finally {
+    const btn = playlistForm.querySelector("button[type='submit']");
+    btn.disabled = false;
+    btn.textContent = "Criar Playlist";
+  }
+};
