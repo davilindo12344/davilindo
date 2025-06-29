@@ -122,59 +122,37 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script>
-    const firebaseConfig = { /* ... mesma config ... */ };
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7n1M1DFVZrkOqEB6WAlTeg_qL4yYvTxs",
+      authDomain: "spotify-eaac3.firebaseapp.com",
+      projectId: "spotify-eaac3",
+      storageBucket: "spotify-eaac3.appspot.com",
+      messagingSenderId: "262950105793",
+      appId: "1:262950105793:web:87ca0380049c7de4649a40",
+      measurementId: "G-4LCHFJSH37"
+    };
+
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    const userNameEl = document.getElementById("userNameInput");
-    const saveNameBtn = document.getElementById("saveNameBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const musicList = document.getElementById("musicList");
-    const capa = document.getElementById("capa");
-    const nome = document.getElementById("nomeMusica");
-    const artista = document.getElementById("nomeArtista");
-    const audio = document.getElementById("audio");
-    const bar = document.getElementById("progress");
-    const publicaCheck = document.getElementById("publica");
-    const playlistForm = document.getElementById("playlistForm");
-    const uploadProgress = document.getElementById("uploadProgress");
-
-    let userUID = null;
-
-    document.getElementById("profileBtn").onclick = () => document.getElementById("profileModal").classList.remove("hidden");
-    document.getElementById("closeProfile").onclick = () => document.getElementById("profileModal").classList.add("hidden");
-    logoutBtn.onclick = () => auth.signOut();
-
-    saveNameBtn.onclick = async () => {
-      const name = userNameEl.value.trim();
-      const user = auth.currentUser;
-      if (user && name) {
-        await user.updateProfile({ displayName: name });
-        alert("Nome atualizado");
-      }
-    };
+    const loading = document.getElementById("loading");
 
     auth.onAuthStateChanged(async (user) => {
       if (user) {
-        userUID = user.uid;
-        userNameEl.value = user.displayName || "";
-        await loadPlaylists();
-        document.getElementById("loading").style.display = "none";
+        document.getElementById("userNameInput").value = user.displayName || "";
+        loading.style.display = "none";
       } else {
         try {
           const provider = new firebase.auth.GoogleAuthProvider();
           await auth.signInWithPopup(provider);
         } catch (error) {
           console.error("Erro no login:", error);
-          alert("Erro ao fazer login. Verifique se o popup foi bloqueado.");
-          document.getElementById("loading").textContent = "Erro ao fazer login.";
+          loading.textContent = "Erro ao fazer login.";
         }
       }
     });
-
-    // ... permanece igual (playlistForm.onsubmit, loadPlaylists, etc.)
   </script>
 </body>
 </html>
