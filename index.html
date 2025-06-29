@@ -1,325 +1,238 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Clone Completo</title>
-
-  <!-- Tailwind CSS -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotify Clone Firebase</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
-  <!-- Vibrant.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
   <style>
-    body {
-      background-color: #121212;
+    #loading {
+      position: fixed;
+      inset: 0;
+      background: black;
       color: white;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
     }
-    #capa {
-      animation: none !important;
-      transform: none !important;
+    #profileModal {
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
     }
   </style>
-</head>
-<body class="flex flex-col min-h-screen">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-  <!-- HEADER -->
-  <header class="p-4 border-b border-gray-700 flex justify-between items-center">
-    <h1 class="text-2xl font-bold select-none">Spotify Clone</h1>
-    <div id="user-section" class="flex items-center space-x-3 hidden">
-      <img id="user-photo" class="w-10 h-10 rounded-full" src="" alt="Foto usuário" />
-      <span id="user-name" class="font-semibold"></span>
-      <button id="btn-logout" class="ml-4 px-3 py-1 bg-red-600 rounded hover:bg-red-700 transition text-sm font-semibold">Sair</button>
-    </div>
-    <button id="btn-login-google" class="px-4 py-2 bg-green-600 rounded hover:bg-green-700 transition text-white font-semibold">Entrar com Google</button>
-  </header>
-
-  <!-- CRIAÇÃO DE PLAYLIST -->
-  <section id="criar-playlist-section" class="p-4 border-b border-gray-700 max-w-4xl mx-auto w-full hidden">
-    <h2 class="text-xl font-bold mb-3 select-none">Criar nova playlist</h2>
-    <form id="form-playlist" class="flex gap-3 flex-wrap">
-      <input
-        type="text"
-        id="input-titulo"
-        placeholder="Título da playlist"
-        required
-        class="flex-grow rounded px-3 py-2 bg-gray-900 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-      />
-      <input
-        type="url"
-        id="input-capa"
-        placeholder="URL da capa da playlist (imagem)"
-        required
-        class="flex-grow rounded px-3 py-2 bg-gray-900 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-      />
-      <input
-        type="url"
-        id="input-audio"
-        placeholder="URL da música (mp3)"
-        required
-        class="flex-grow rounded px-3 py-2 bg-gray-900 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-      />
-      <button
-        type="submit"
-        class="bg-green-600 hover:bg-green-700 transition rounded px-5 py-2 font-bold"
-      >
-        Criar
-      </button>
-    </form>
-  </section>
-
-  <!-- LISTA DE PLAYLISTS -->
-  <main class="flex-grow p-4 max-w-4xl mx-auto w-full overflow-y-auto">
-    <h2 class="text-2xl font-bold mb-4 select-none">Suas playlists</h2>
-    <div id="playlistsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5"></div>
-  </main>
-
-  <!-- PLAYER FIXO -->
-  <footer
-    id="player-footer"
-    class="fixed bottom-0 left-0 right-0 bg-[#1e1e1e] text-white px-5 py-3 flex items-center justify-between space-x-4 transition-colors duration-700"
-  >
-    <div class="flex items-center gap-4 min-w-[200px] max-w-[350px]">
-      <img id="capa" src="" alt="Capa da música" class="w-16 h-16 rounded" />
-      <div class="flex flex-col truncate">
-        <span id="nomeMusica" class="font-semibold truncate">-</span>
-        <span id="nomePlaylist" class="text-gray-400 text-sm truncate">-</span>
-      </div>
-    </div>
-
-    <div class="flex flex-col flex-grow max-w-xl">
-      <input
-        type="range"
-        id="barraProgresso"
-        min="0"
-        value="0"
-        step="0.01"
-        class="w-full accent-green-500 cursor-pointer"
-      />
-      <div class="flex justify-between text-xs text-gray-400 select-none mt-1">
-        <span id="tempoAtual">0:00</span>
-        <span id="tempoTotal">0:00</span>
-      </div>
-    </div>
-
-    <button
-      id="botaoPlayPause"
-      aria-label="Tocar / Pausar"
-      class="text-green-500 text-2xl hover:text-green-600 transition"
-    >
-      <i id="iconePlayPause" class="fas fa-play"></i>
-    </button>
-
-    <audio id="audio" preload="auto"></audio>
-  </footer>
-
-  <script>
-    // CONFIGURAÇÃO FIREBASE (substitua pelos seus dados!)
     const firebaseConfig = {
       apiKey: "AIzaSyA7n1M1DFVZrkOqEB6WAlTeg_qL4yYvTxs",
       authDomain: "spotify-eaac3.firebaseapp.com",
       projectId: "spotify-eaac3",
       storageBucket: "spotify-eaac3.appspot.com",
       messagingSenderId: "262950105793",
-      appId: "1:262950105793:web:87ca0380049c7de4649a40"
+      appId: "1:262950105793:web:87ca0380049c7de4649a40",
+      measurementId: "G-4LCHFJSH37"
     };
 
-    // Inicializa Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db = getFirestore();
+    const storage = getStorage();
 
-    // ELEMENTOS
-    const btnLogin = document.getElementById('btn-login-google');
-    const btnLogout = document.getElementById('btn-logout');
-    const userSection = document.getElementById('user-section');
-    const userPhoto = document.getElementById('user-photo');
-    const userName = document.getElementById('user-name');
-    const criarPlaylistSection = document.getElementById('criar-playlist-section');
+    const loadingScreen = document.getElementById("loading");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userName = document.getElementById("userName");
+    const form = document.getElementById("playlistForm");
+    const musicList = document.getElementById("musicList");
+    const player = document.getElementById("player");
+    const capa = document.getElementById("capa");
+    const nome = document.getElementById("nomeMusica");
+    const artista = document.getElementById("nomeArtista");
+    const audio = document.getElementById("audio");
+    const bar = document.getElementById("progress");
+    const publicaCheck = document.getElementById("publica");
+    const profileBtn = document.getElementById("profileBtn");
+    const profileModal = document.getElementById("profileModal");
+    const closeProfile = document.getElementById("closeProfile");
 
-    const playlistsContainer = document.getElementById('playlistsContainer');
-    const formPlaylist = document.getElementById('form-playlist');
-    const inputTitulo = document.getElementById('input-titulo');
-    const inputCapa = document.getElementById('input-capa');
-    const inputAudio = document.getElementById('input-audio');
+    let userUID = null;
 
-    const audio = document.getElementById('audio');
-    const capaPlayer = document.getElementById('capa');
-    const nomeMusica = document.getElementById('nomeMusica');
-    const nomePlaylist = document.getElementById('nomePlaylist');
-    const botaoPlayPause = document.getElementById('botaoPlayPause');
-    const iconePlayPause = document.getElementById('iconePlayPause');
-    const barraProgresso = document.getElementById('barraProgresso');
-    const tempoAtual = document.getElementById('tempoAtual');
-    const tempoTotal = document.getElementById('tempoTotal');
-    const playerFooter = document.getElementById('player-footer');
-
-    let tocando = false;
-    let playlistAtual = null;
-    let playlistIdAtual = null;
-
-    // Atualiza progress bar e tempo
-    audio.addEventListener('timeupdate', () => {
-      barraProgresso.value = audio.currentTime;
-      tempoAtual.textContent = formatarTempo(audio.currentTime);
-    });
-    audio.addEventListener('loadedmetadata', () => {
-      barraProgresso.max = audio.duration;
-      tempoTotal.textContent = formatarTempo(audio.duration);
-    });
-
-    barraProgresso.addEventListener('input', () => {
-      audio.currentTime = barraProgresso.value;
-    });
-
-    botaoPlayPause.addEventListener('click', () => {
-      if (tocando) audio.pause();
-      else audio.play();
-    });
-
-    audio.addEventListener('play', () => {
-      tocando = true;
-      iconePlayPause.classList.replace('fa-play', 'fa-pause');
-      botaoPlayPause.classList.add('text-white');
-      botaoPlayPause.classList.remove('text-green-500');
-    });
-    audio.addEventListener('pause', () => {
-      tocando = false;
-      iconePlayPause.classList.replace('fa-pause', 'fa-play');
-      botaoPlayPause.classList.remove('text-white');
-      botaoPlayPause.classList.add('text-green-500');
-    });
-
-    // Formata tempo em mm:ss
-    function formatarTempo(segundos) {
-      const min = Math.floor(segundos / 60);
-      const seg = Math.floor(segundos % 60).toString().padStart(2, '0');
-      return `${min}:${seg}`;
+    function showLoading(show) {
+      loadingScreen.style.display = show ? "flex" : "none";
     }
 
-    // Login Google
-    btnLogin.addEventListener('click', () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider)
-        .catch((error) => alert("Erro no login: " + error.message));
-    });
+    loginBtn.onclick = async () => {
+      showLoading(true);
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider).finally(() => showLoading(false));
+    };
 
-    btnLogout.addEventListener('click', () => {
-      auth.signOut();
-    });
+    logoutBtn.onclick = async () => {
+      await signOut(auth);
+    };
 
-    // Atualiza UI e exibe playlists ao mudar estado do usuário
-    auth.onAuthStateChanged(async (user) => {
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
-        btnLogin.style.display = 'none';
-        userSection.style.display = 'flex';
-        criarPlaylistSection.style.display = 'block';
-
-        userPhoto.src = user.photoURL;
+        userUID = user.uid;
         userName.textContent = user.displayName;
-
-        carregarPlaylists(user.uid);
+        loginBtn.classList.add("hidden");
+        logoutBtn.classList.remove("hidden");
+        form.classList.remove("hidden");
+        loadPlaylists();
       } else {
-        btnLogin.style.display = 'inline-block';
-        userSection.style.display = 'none';
-        criarPlaylistSection.style.display = 'none';
-        playlistsContainer.innerHTML = '';
-        pararMusica();
+        userUID = null;
+        userName.textContent = "";
+        loginBtn.classList.remove("hidden");
+        logoutBtn.classList.add("hidden");
+        form.classList.add("hidden");
+        musicList.innerHTML = "";
       }
     });
 
-    // Carrega playlists do usuário no Firestore
-    async function carregarPlaylists(uid) {
-      playlistsContainer.innerHTML = '';
-      const snapshot = await db.collection('playlists').where('uid', '==', uid).get();
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        adicionarCardPlaylist(doc.id, data);
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      showLoading(true);
+      const nome = form.nome.value;
+      const capaFile = form.capa.files[0];
+      const musicaFile = form.musica.files[0];
+      const isPublica = publicaCheck.checked;
+
+      const capaRef = ref(storage, `capas/${capaFile.name}`);
+      const musicaRef = ref(storage, `musicas/${musicaFile.name}`);
+
+      await uploadBytes(capaRef, capaFile);
+      await uploadBytes(musicaRef, musicaFile);
+
+      const capaURL = await getDownloadURL(capaRef);
+      const musicaURL = await getDownloadURL(musicaRef);
+
+      await addDoc(collection(db, "playlists"), {
+        uid: userUID,
+        nome,
+        capa: capaURL,
+        musica: musicaURL,
+        publica: isPublica
+      });
+
+      form.reset();
+      loadPlaylists();
+      showLoading(false);
+    };
+
+    async function loadPlaylists() {
+      const q = query(collection(db, "playlists"));
+      const snapshot = await getDocs(q);
+      musicList.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const p = docSnap.data();
+        if (p.uid === userUID || p.publica) {
+          const div = document.createElement("div");
+          div.className = "flex items-center gap-3 justify-between bg-gray-800 p-2 rounded";
+          div.innerHTML = `
+            <div class="flex items-center gap-3 cursor-pointer" id="play-${docSnap.id}">
+              <img src="${p.capa}" class="w-14 h-14 rounded" />
+              <div>
+                <p class="font-bold">${p.nome}</p>
+              </div>
+            </div>
+            ${p.uid === userUID ? `<button class="text-red-500" id="del-${docSnap.id}">Excluir</button>` : ""}
+          `;
+          musicList.appendChild(div);
+
+          document.getElementById(`play-${docSnap.id}`).onclick = () => playMusic(p);
+          if (p.uid === userUID) {
+            document.getElementById(`del-${docSnap.id}`).onclick = async () => {
+              await deleteDoc(doc(db, "playlists", docSnap.id));
+              loadPlaylists();
+            };
+          }
+        }
       });
     }
 
-    // Cria card da playlist na tela
-    function adicionarCardPlaylist(id, playlist) {
-      const div = document.createElement('div');
-      div.className = 'bg-gray-900 rounded-md p-3 cursor-pointer hover:bg-gray-800 flex flex-col items-center gap-2 shadow-lg';
-      div.innerHTML = `
-        <img src="${playlist.capa}" alt="${playlist.titulo}" class="w-36 h-36 rounded shadow-md object-cover" />
-        <p class="text-center font-semibold text-lg truncate w-full">${playlist.titulo}</p>
-      `;
-      div.addEventListener('click', () => {
-        tocarPlaylist(id, playlist);
-      });
-      playlistsContainer.appendChild(div);
-    }
-
-    // Tocar música da playlist selecionada
-    function tocarPlaylist(id, playlist) {
-      playlistAtual = playlist;
-      playlistIdAtual = id;
-
-      audio.src = playlist.audio;
+    function playMusic(p) {
+      audio.src = p.musica;
+      nome.textContent = p.nome;
+      artista.textContent = "";
+      capa.src = p.capa;
       audio.play();
 
-      capaPlayer.src = playlist.capa;
-      nomeMusica.textContent = playlist.titulo;
-      nomePlaylist.textContent = ""; // artista não usado
-
-      atualizarCorPlayer(playlist.capa);
+      Vibrant.from(p.capa).getPalette().then((palette) => {
+        document.getElementById("player").style.backgroundColor = palette.Vibrant.getHex();
+      });
     }
 
-    // Atualiza cor do player com Vibrant.js
-    function atualizarCorPlayer(imagem) {
-      Vibrant.from(imagem).getPalette()
-        .then(palette => {
-          const cor = palette.Vibrant ? palette.Vibrant.getHex() : '#1e1e1e';
-          playerFooter.style.backgroundColor = cor;
-        })
-        .catch(() => {
-          playerFooter.style.backgroundColor = '#1e1e1e';
-        });
-    }
+    audio.ontimeupdate = () => {
+      bar.value = audio.currentTime;
+    };
 
-    // Parar música e resetar player
-    function pararMusica() {
-      audio.pause();
-      audio.src = "";
-      capaPlayer.src = "";
-      nomeMusica.textContent = "-";
-      nomePlaylist.textContent = "-";
-      playerFooter.style.backgroundColor = '#1e1e1e';
-    }
+    audio.onloadedmetadata = () => {
+      bar.max = audio.duration;
+    };
 
-    // Evento criação playlist
-    formPlaylist.addEventListener('submit', async e => {
-      e.preventDefault();
-      if (!inputTitulo.value || !inputCapa.value || !inputAudio.value) return alert('Preencha todos os campos');
+    bar.oninput = () => {
+      audio.currentTime = bar.value;
+    };
 
-      const user = auth.currentUser;
-      if (!user) return alert('Faça login antes.');
-
-      try {
-        await db.collection('playlists').add({
-          uid: user.uid,
-          titulo: inputTitulo.value.trim(),
-          capa: inputCapa.value.trim(),
-          audio: inputAudio.value.trim(),
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-
-        alert('Playlist criada com sucesso!');
-        formPlaylist.reset();
-        carregarPlaylists(user.uid);
-      } catch (err) {
-        alert('Erro ao criar playlist: ' + err.message);
-      }
-    });
+    // Modal de perfil
+    profileBtn.onclick = () => profileModal.classList.remove("hidden");
+    closeProfile.onclick = () => profileModal.classList.add("hidden");
   </script>
+</head>
+<body class="bg-black text-white min-h-screen flex flex-col">
+  <div id="loading">Carregando...</div>
+
+  <header class="p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">Spotify Clone</h1>
+    <div class="flex gap-2 items-center">
+      <button id="profileBtn" class="bg-gray-700 px-2 py-1 rounded">Perfil</button>
+      <span id="userName"></span>
+      <button id="loginBtn" class="bg-green-500 px-3 py-1 rounded">Login Google</button>
+      <button id="logoutBtn" class="bg-red-500 px-3 py-1 rounded hidden">Logout</button>
+    </div>
+  </header>
+
+  <main class="px-4 space-y-6 flex-1 overflow-y-auto">
+    <form id="playlistForm" class="space-y-3 hidden">
+      <input name="nome" required placeholder="Nome da música" class="w-full p-2 rounded bg-gray-800" />
+      <input name="capa" type="file" accept="image/*" required class="w-full p-2 rounded bg-gray-800" />
+      <input name="musica" type="file" accept="audio/*" required class="w-full p-2 rounded bg-gray-800" />
+      <label class="flex items-center gap-2">
+        <input type="checkbox" id="publica" class="accent-green-500" />
+        Tornar playlist pública
+      </label>
+      <button type="submit" class="bg-blue-600 px-4 py-2 rounded">Criar Playlist</button>
+    </form>
+
+    <section>
+      <h2 class="text-lg font-bold mb-2">Playlists Disponíveis</h2>
+      <div id="musicList" class="space-y-2"></div>
+    </section>
+  </main>
+
+  <footer id="player" class="bg-gray-900 p-4">
+    <div class="flex items-center gap-3">
+      <img id="capa" class="w-12 h-12 rounded" />
+      <div>
+        <p id="nomeMusica" class="font-bold">-</p>
+        <p id="nomeArtista" class="text-sm text-gray-400">-</p>
+      </div>
+    </div>
+    <input id="progress" type="range" class="w-full mt-2" value="0" />
+    <audio id="audio" controls class="w-full mt-2"></audio>
+  </footer>
+
+  <div id="profileModal" class="fixed inset-0 hidden z-40 flex items-center justify-center">
+    <div class="bg-gray-900 p-6 rounded shadow-lg text-white w-[90%] max-w-sm">
+      <h2 class="text-lg font-bold mb-4">Perfil</h2>
+      <p>Nome: <span id="userName"></span></p>
+      <button id="closeProfile" class="mt-4 px-4 py-2 bg-gray-700 rounded">Fechar</button>
+    </div>
+  </div>
 </body>
 </html>
