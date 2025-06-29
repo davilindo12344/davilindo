@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spotify Clone Firebase</title>
+  <title>Spotify do davi</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
   <style>
@@ -100,6 +100,7 @@
           Tornar playlist pública
         </label>
         <button type="submit" class="bg-blue-600 px-4 py-2 rounded">Criar Playlist</button>
+        <div id="uploadProgress" class="text-sm text-gray-400"></div>
       </form>
     </section>
   </main>
@@ -138,6 +139,7 @@
     const bar = document.getElementById("progress");
     const publicaCheck = document.getElementById("publica");
     const playlistForm = document.getElementById("playlistForm");
+    const uploadProgress = document.getElementById("uploadProgress");
 
     let userUID = null;
 
@@ -187,8 +189,19 @@
         const capaRef = storage.ref(`capas/${timestamp}_${capaFile.name}`);
         const musicaRef = storage.ref(`musicas/${timestamp}_${musicaFile.name}`);
 
-        await capaRef.put(capaFile);
-        await musicaRef.put(musicaFile);
+        const capaUpload = capaRef.put(capaFile);
+        capaUpload.on("state_changed", snapshot => {
+          const prog = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          uploadProgress.textContent = `Upload da capa: ${prog}%`;
+        });
+        await capaUpload;
+
+        const musicaUpload = musicaRef.put(musicaFile);
+        musicaUpload.on("state_changed", snapshot => {
+          const prog = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          uploadProgress.textContent = `Upload da música: ${prog}%`;
+        });
+        await musicaUpload;
 
         const capaURL = await capaRef.getDownloadURL();
         const musicaURL = await musicaRef.getDownloadURL();
@@ -204,6 +217,7 @@
 
         alert("Playlist criada com sucesso!");
         playlistForm.reset();
+        uploadProgress.textContent = "";
         loadPlaylists();
       } catch (error) {
         alert("Erro: " + error.message);
@@ -222,8 +236,9 @@
         if (p.uid === userUID || p.publica) {
           const div = document.createElement("div");
           div.className = "bg-gray-800 p-3 rounded flex items-center justify-between";
+          div.onclick = () => playMusic(p);
           div.innerHTML = `
-            <div class="flex items-center gap-3 cursor-pointer" onclick='playMusic(${JSON.stringify(p)})'>
+            <div class="flex items-center gap-3 cursor-pointer">
               <img src="${p.capa}" class="w-14 h-14 rounded" />
               <div><p class="font-bold">${p.nome}</p></div>
             </div>
