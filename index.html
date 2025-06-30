@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify</title>
+  <title>Spotify do Davi</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
   <style>
@@ -138,7 +138,7 @@
 <body>
 
   <header style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; background:#000;">
-    <h1 style="font-weight:bold; font-size:1.4rem; user-select:none;">Spotify</h1>
+    <h1 style="font-weight:bold; font-size:1.4rem; user-select:none;">Spotify do Davi</h1>
     <button id="profileBtn" title="Perfil" style="background:none; border:none; color:#b3b3b3; cursor:pointer; font-size:18px;">
       <i class="fas fa-user-circle"></i>
     </button>
@@ -148,9 +148,9 @@
   <div id="profileModal">
     <div id="profileContent">
       <h2>Perfil</h2>
-      <p id="userNameDisplay" style="font-weight:bold; margin-top:10px;"></p>
-      <input type="text" id="userNameInput" placeholder="Alterar nome" />
-      <button id="updateNameBtn" style="background:#1db954; border:none; color:#000; padding:8px 12px; border-radius:20px; cursor:pointer;">Salvar</button>
+      <p id="userEmailDisplay" style="font-weight:bold; margin-top:10px;"></p>
+      <input type="text" id="userNicknameInput" placeholder="Alterar apelido" />
+      <button id="updateNicknameBtn" style="background:#1db954; border:none; color:#000; padding:8px 12px; border-radius:20px; cursor:pointer;">Salvar Apelido</button>
       <button id="logoutBtn" style="background:#e22134; border:none; color:#fff; padding:8px 12px; border-radius:20px; cursor:pointer; margin-top:10px;">Sair</button>
       <br />
       <button id="closeProfile" style="background:none; border:none; color:#b3b3b3; margin-top:10px; cursor:pointer; text-decoration:underline;">Fechar</button>
@@ -241,16 +241,14 @@
     const profileModal = document.getElementById("profileModal");
     const closeProfileBtn = document.getElementById("closeProfile");
     const logoutBtn = document.getElementById("logoutBtn");
-    const userNameDisplay = document.getElementById("userNameDisplay");
-    const userNameInput = document.getElementById("userNameInput");
-    const updateNameBtn = document.getElementById("updateNameBtn");
+    const userEmailDisplay = document.getElementById("userEmailDisplay");
+    const userNicknameInput = document.getElementById("userNicknameInput");
+    const updateNicknameBtn = document.getElementById("updateNicknameBtn");
 
     const homeTab = document.getElementById("homeTab");
     const searchTab = document.getElementById("searchTab");
     const libraryTab = document.getElementById("libraryTab");
     const createTab = document.getElementById("createTab");
-
-    const navButtons = [];
 
     // Player Elements
     const playerFooter = document.getElementById("player");
@@ -318,29 +316,37 @@
     closeProfileBtn.onclick = () => profileModal.classList.remove("active");
     logoutBtn.onclick = () => auth.signOut();
 
-    // Atualizar nome do usuário
-    updateNameBtn.onclick = async () => {
-      const newName = userNameInput.value.trim();
-      if (!newName) {
-        alert("Informe um novo nome válido.");
+    // Atualizar apelido (displayName)
+    updateNicknameBtn.onclick = async () => {
+      const newNickname = userNicknameInput.value.trim();
+      if (!newNickname) {
+        alert("Informe um apelido válido.");
         return;
       }
       try {
-        await currentUser.updateProfile({ displayName: newName });
-        userNameDisplay.textContent = newName;
-        alert("Nome atualizado!");
-        userNameInput.value = "";
+        await currentUser.updateProfile({ displayName: newNickname });
+        alert("Apelido atualizado!");
+        userNicknameInput.value = "";
+        userNicknameInput.placeholder = newNickname;
+        loadUserInfo();
       } catch(e) {
-        alert("Erro ao atualizar nome: " + e.message);
+        alert("Erro ao atualizar apelido: " + e.message);
       }
     };
+
+    // Carregar info usuário (email e apelido)
+    function loadUserInfo() {
+      if (!currentUser) return;
+      userEmailDisplay.textContent = currentUser.email || "";
+      userNicknameInput.placeholder = currentUser.displayName || "Sem apelido";
+    }
 
     // Autenticação Google Firebase
     auth.onAuthStateChanged(async (user) => {
       if (user) {
         currentUser = user;
         userUID = user.uid;
-        userNameDisplay.textContent = user.displayName || "Usuário";
+        loadUserInfo();
         loadPublicPlaylists();
         loadUserPlaylists();
         setActiveTab(homeTab);
