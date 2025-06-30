@@ -6,270 +6,409 @@
   <title>Spotify Clone Firebase</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.2.0/vibrant.min.js"></script>
+
   <style>
-    body { background-color: #121212; color: white; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .tab-button.active { border-bottom: 2px solid #1DB954; color: #1DB954; }
-    #player { background-color: #282828; padding: 1rem; position: fixed; bottom: 0; width: 100%; }
+    body {
+      background-color: #121212;
+      color: white;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    /* Player fixed bottom */
+    #player {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #282828;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      z-index: 999;
+    }
+    #player img {
+      width: 50px;
+      height: 50px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+    #player .info {
+      flex-grow: 1;
+      overflow: hidden;
+    }
+    #player .info p {
+      margin: 0;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+    /* Tabs */
+    .tab {
+      display: none;
+    }
+    .tab.active {
+      display: block;
+    }
+    /* Bottom nav for mobile */
+    @media (max-width: 768px) {
+      nav.bottom-nav {
+        position: fixed;
+        bottom: 60px;
+        left: 0;
+        right: 0;
+        background: #181818;
+        display: flex;
+        justify-content: space-around;
+        padding: 10px 0;
+        border-top: 1px solid #333;
+        z-index: 999;
+      }
+      nav.bottom-nav button {
+        background: none;
+        border: none;
+        color: #b3b3b3;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+      }
+      nav.bottom-nav button.active {
+        color: #1db954;
+      }
+    }
   </style>
 </head>
-<body class="flex flex-col min-h-screen pb-24">
+<body>
 
-<header class="flex justify-between items-center p-4 bg-black border-b border-gray-800">
-  <h1 class="text-2xl font-bold">Spotify Clone</h1>
-  <div>
-    <button id="profileBtn" class="bg-gray-700 px-3 py-1 rounded">Perfil</button>
+  <header class="flex justify-between items-center p-4 border-b border-gray-800">
+    <h1 class="text-2xl font-bold text-green-500">Spotify Clone</h1>
+    <div>
+      <button id="profileBtn" class="text-white hover:text-green-500">Perfil</button>
+    </div>
+  </header>
+
+  <!-- Modal Perfil -->
+  <div id="profileModal" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center hidden z-50">
+    <div class="bg-gray-900 p-6 rounded w-80 max-w-full">
+      <h2 class="text-xl mb-4 text-green-500">Perfil</h2>
+      <p class="mb-2">Nome:</p>
+      <input id="userNameInput" class="w-full p-2 mb-4 rounded bg-gray-800 text-white" />
+      <button id="saveNameBtn" class="bg-green-500 px-4 py-2 rounded mb-4 w-full">Salvar nome</button>
+      <button id="logoutBtn" class="bg-red-600 px-4 py-2 rounded w-full">Sair</button>
+      <button id="closeProfile" class="mt-4 text-gray-400 underline w-full">Fechar</button>
+    </div>
   </div>
-</header>
 
-<!-- Abas -->
-<nav class="flex justify-around bg-black border-b border-gray-800">
-  <button class="tab-button active px-4 py-2" data-tab="inicio">Início</button>
-  <button class="tab-button px-4 py-2" data-tab="buscar">Buscar</button>
-  <button class="tab-button px-4 py-2" data-tab="biblioteca">Biblioteca</button>
-  <button class="tab-button px-4 py-2" data-tab="criar">Criar</button>
-</nav>
+  <!-- Navegação abas -->
+  <nav class="hidden md:flex gap-6 p-4 border-b border-gray-800 bg-gray-900">
+    <button class="tab-btn text-green-500 font-bold" data-tab="inicio">Início</button>
+    <button class="tab-btn text-gray-400 hover:text-green-500" data-tab="biblioteca">Sua Biblioteca</button>
+    <button class="tab-btn text-gray-400 hover:text-green-500" data-tab="criar">Criar Playlist</button>
+  </nav>
 
-<!-- Conteúdo das abas -->
-<main class="flex-grow p-4 overflow-auto">
+  <!-- Mobile bottom nav -->
+  <nav class="bottom-nav md:hidden">
+    <button class="tab-btn active" data-tab="inicio">
+      <i class="fas fa-home"></i>
+      <span>Início</span>
+    </button>
+    <button class="tab-btn" data-tab="biblioteca">
+      <i class="fas fa-book"></i>
+      <span>Biblioteca</span>
+    </button>
+    <button class="tab-btn" data-tab="criar">
+      <i class="fas fa-plus-circle"></i>
+      <span>Criar</span>
+    </button>
+  </nav>
 
-  <!-- Início -->
-  <section id="tab-inicio" class="tab-content active">
-    <h2 class="text-xl font-bold mb-4">Bem-vindo ao Spotify Clone!</h2>
-    <p>Use as abas para navegar pelo app.</p>
-  </section>
+  <!-- Conteúdos das abas -->
+  <main class="p-4 flex-grow">
 
-  <!-- Buscar -->
-  <section id="tab-buscar" class="tab-content">
-    <h2 class="text-xl font-bold mb-4">Buscar (não implementado)</h2>
-    <p>Funcionalidade de busca em desenvolvimento.</p>
-  </section>
+    <section id="inicio" class="tab active">
+      <h2 class="text-xl font-semibold mb-4">Bem-vindo ao Spotify Clone</h2>
+      <p>Use a aba "Criar Playlist" para adicionar suas músicas.</p>
+    </section>
 
-  <!-- Biblioteca -->
-  <section id="tab-biblioteca" class="tab-content">
-    <h2 class="text-xl font-bold mb-4">Sua Biblioteca</h2>
-    <div id="musicList" class="space-y-3"></div>
-  </section>
+    <section id="biblioteca" class="tab">
+      <h2 class="text-xl font-semibold mb-4">Sua Biblioteca</h2>
+      <div id="musicList" class="space-y-3"></div>
+    </section>
 
-  <!-- Criar Playlist -->
-  <section id="tab-criar" class="tab-content">
-    <h2 class="text-xl font-bold mb-4">Criar Playlist / Música</h2>
-    <form id="playlistForm" class="space-y-4 max-w-md">
-      <input name="nome" placeholder="Nome da música" required class="w-full p-2 rounded bg-gray-800" />
-      <input name="capa" type="file" accept="image/*" required class="w-full p-2 rounded bg-gray-800" />
-      <input name="musica" type="file" accept="audio/*" required class="w-full p-2 rounded bg-gray-800" />
-      <label class="flex items-center gap-2">
-        <input type="checkbox" id="publica" class="accent-green-500" />
-        Tornar pública
-      </label>
-      <button type="submit" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white font-semibold">Criar Playlist</button>
-      <p id="uploadProgress" class="text-sm mt-2"></p>
-    </form>
-  </section>
+    <section id="criar" class="tab">
+      <h2 class="text-xl font-semibold mb-4">Criar Playlist</h2>
+      <form id="playlistForm" class="flex flex-col gap-3 max-w-lg">
+        <input name="nome" placeholder="Nome da música" required class="p-2 rounded bg-gray-800 text-white" />
+        <input name="capa" type="file" accept="image/*" required class="p-2 rounded bg-gray-800 text-white" />
+        <input name="musica" type="file" accept="audio/*" required class="p-2 rounded bg-gray-800 text-white" />
+        <label class="flex items-center gap-2 text-white">
+          <input type="checkbox" id="publica" class="accent-green-500" />
+          Tornar playlist pública
+        </label>
+        <button type="submit" class="bg-green-500 py-2 rounded text-black font-bold">Criar Playlist</button>
+        <p id="uploadProgress" class="text-sm mt-1"></p>
+      </form>
+    </section>
 
-</main>
+  </main>
 
-<!-- Player fixo embaixo -->
-<footer id="player" class="flex items-center gap-4">
-  <img id="capa" class="w-16 h-16 rounded" />
-  <div>
-    <p id="nomeMusica" class="font-bold">-</p>
-    <p id="nomeArtista" class="text-gray-400 text-sm">-</p>
-  </div>
-  <audio id="audio" controls class="flex-grow"></audio>
-</footer>
+  <!-- Player fixo -->
+  <footer id="player" class="hidden">
+    <div class="flex items-center gap-4 p-2">
+      <img id="capa" src="" alt="Capa da música" />
+      <div class="info">
+        <p id="nomeMusica" class="font-semibold"></p>
+        <p id="nomeArtista" class="text-sm text-gray-400"></p>
+      </div>
+      <audio id="audio" controls class="flex-grow"></audio>
+    </div>
+  </footer>
 
-<!-- Modal Perfil -->
-<div id="profileModal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center z-50">
-  <div class="bg-gray-900 p-6 rounded max-w-sm w-full space-y-4">
-    <h3 class="text-xl font-bold">Perfil</h3>
-    <input id="userNameInput" class="w-full p-2 rounded bg-gray-800 text-white" />
-    <button id="saveNameBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded w-full text-white font-semibold">Salvar Nome</button>
-    <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded w-full text-white font-semibold">Sair</button>
-    <button id="closeProfile" class="text-center text-gray-400 underline mt-2">Fechar</button>
-  </div>
-</div>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 
-<!-- Firebase libs compat -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script>
+    // Config Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7n1M1DFVZrkOqEB6WAlTeg_qL4yYvTxs",
+      authDomain: "spotify-eaac3.firebaseapp.com",
+      projectId: "spotify-eaac3",
+      storageBucket: "spotify-eaac3.appspot.com",
+      messagingSenderId: "262950105793",
+      appId: "1:262950105793:web:87ca0380049c7de4649a40",
+      measurementId: "G-4LCHFJSH37"
+    };
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyA7n1M1DFVZrkOqEB6WAlTeg_qL4yYvTxs",
-    authDomain: "spotify-eaac3.firebaseapp.com",
-    projectId: "spotify-eaac3",
-    storageBucket: "spotify-eaac3.appspot.com",
-    messagingSenderId: "262950105793",
-    appId: "1:262950105793:web:87ca0380049c7de4649a40",
-    measurementId: "G-4LCHFJSH37"
-  };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-  const storage = firebase.storage();
+    // Elementos UI
+    const profileBtn = document.getElementById("profileBtn");
+    const profileModal = document.getElementById("profileModal");
+    const closeProfile = document.getElementById("closeProfile");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const saveNameBtn = document.getElementById("saveNameBtn");
+    const userNameInput = document.getElementById("userNameInput");
 
-  // Elementos do DOM
-  const playlistForm = document.getElementById("playlistForm");
-  const musicList = document.getElementById("musicList");
-  const userNameInput = document.getElementById("userNameInput");
-  const saveNameBtn = document.getElementById("saveNameBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const publicaCheck = document.getElementById("publica");
-  const uploadProgress = document.getElementById("uploadProgress");
+    const playlistForm = document.getElementById("playlistForm");
+    const publicaCheck = document.getElementById("publica");
+    const uploadProgress = document.getElementById("uploadProgress");
 
-  let userUID = null;
+    const musicList = document.getElementById("musicList");
+    const player = document.getElementById("player");
+    const capa = document.getElementById("capa");
+    const nomeMusica = document.getElementById("nomeMusica");
+    const nomeArtista = document.getElementById("nomeArtista");
+    const audio = document.getElementById("audio");
 
-  // Login automático com Google
-  auth.onAuthStateChanged(async (user) => {
-    if (user) {
-      userUID = user.uid;
-      userNameInput.value = user.displayName || "Usuário";
-      loadPlaylists();
-    } else {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      await auth.signInWithPopup(provider);
-    }
-  });
+    // Controle abas
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const tabs = document.querySelectorAll(".tab");
 
-  // Envio da playlist/música
-  playlistForm.onsubmit = async (e) => {
-    e.preventDefault();
+    let userUID = null;
+    let currentUser = null;
 
-    const nomeMusica = playlistForm.nome.value.trim();
-    const capaFile = playlistForm.capa.files[0];
-    const musicaFile = playlistForm.musica.files[0];
-    const isPublica = publicaCheck.checked;
-
-    if (!nomeMusica || !capaFile || !musicaFile) {
-      alert("Preencha todos os campos!");
-      return;
-    }
-
-    try {
-      const btn = playlistForm.querySelector("button[type='submit']");
-      btn.disabled = true;
-      btn.textContent = "Enviando...";
-      uploadProgress.textContent = "Enviando arquivos...";
-
-      const timestamp = Date.now();
-      const capaRef = storage.ref(`capas/${timestamp}_${capaFile.name}`);
-      const musicaRef = storage.ref(`musicas/${timestamp}_${musicaFile.name}`);
-
-      await capaRef.put(capaFile);
-      await musicaRef.put(musicaFile);
-
-      const capaURL = await capaRef.getDownloadURL();
-      const musicaURL = await musicaRef.getDownloadURL();
-
-      await db.collection("playlists").add({
-        uid: userUID,
-        nome: nomeMusica,
-        artista: userNameInput.value,
-        capa: capaURL,
-        musica: musicaURL,
-        publica: isPublica
+    // Função troca abas
+    function setActiveTab(tabName) {
+      tabs.forEach(tab => {
+        tab.classList.toggle("active", tab.id === tabName);
       });
-
-      alert("Playlist criada com sucesso!");
-      playlistForm.reset();
-      uploadProgress.textContent = "";
-      loadPlaylists();
-
-      // Muda para aba Biblioteca automaticamente
-      setActiveTab("biblioteca");
-    } catch (error) {
-      console.error("Erro ao criar playlist:", error);
-      alert("Erro ao criar playlist: " + error.message);
-      uploadProgress.textContent = "";
-    } finally {
-      const btn = playlistForm.querySelector("button[type='submit']");
-      btn.disabled = false;
-      btn.textContent = "Criar Playlist";
+      tabButtons.forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === tabName);
+      });
     }
-  };
 
-  // Carrega playlists da coleção
-  async function loadPlaylists() {
-    const snap = await db.collection("playlists").get();
-    musicList.innerHTML = "";
-    snap.forEach(doc => {
-      const p = doc.data();
-      if (p.uid === userUID || p.publica) {
-        const div = document.createElement("div");
-        div.className = "bg-gray-800 p-3 rounded flex items-center gap-3 cursor-pointer hover:bg-gray-700";
-        div.innerHTML = `
-          <img src="${p.capa}" class="w-14 h-14 rounded" />
-          <div>
-            <p class="font-bold">${p.nome}</p>
-            <p class="text-sm text-gray-400">${p.artista || "-"}</p>
-          </div>
-        `;
-        div.onclick = () => playMusic(p);
-        musicList.appendChild(div);
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        setActiveTab(btn.dataset.tab);
+      });
+    });
+
+    // Perfil modal
+    profileBtn.onclick = () => {
+      if (!currentUser) return alert("Faça login antes.");
+      userNameInput.value = currentUser.displayName || "";
+      profileModal.classList.remove("hidden");
+    };
+    closeProfile.onclick = () => profileModal.classList.add("hidden");
+    logoutBtn.onclick = () => auth.signOut();
+
+    saveNameBtn.onclick = async () => {
+      const novoNome = userNameInput.value.trim();
+      if (!novoNome) return alert("Digite um nome válido");
+      try {
+        await currentUser.updateProfile({ displayName: novoNome });
+        alert("Nome atualizado!");
+        profileModal.classList.add("hidden");
+        userNameInput.value = novoNome;
+      } catch (e) {
+        alert("Erro ao atualizar nome: " + e.message);
+      }
+    };
+
+    // Monitor auth state
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        userUID = user.uid;
+        currentUser = user;
+        userNameInput.value = user.displayName || "";
+        loadPlaylists();
+      } else {
+        userUID = null;
+        currentUser = null;
+        // Tenta login Google
+        try {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          await auth.signInWithPopup(provider);
+        } catch (e) {
+          alert("Login cancelado ou falhou.");
+        }
       }
     });
-  }
 
-  // Tocar música no player
-  function playMusic(p) {
-    const audio = document.getElementById("audio");
-    const capa = document.getElementById("capa");
-    const nome = document.getElementById("nomeMusica");
-    const artista = document.getElementById("nomeArtista");
+    // Upload e criar playlist
+    playlistForm.onsubmit = async (e) => {
+      e.preventDefault();
 
-    audio.src = p.musica;
-    capa.src = p.capa;
-    nome.textContent = p.nome;
-    artista.textContent = p.artista || "-";
-    audio.play();
+      const nomeMusicaVal = playlistForm.nome.value.trim();
+      const capaFile = playlistForm.capa.files[0];
+      const musicaFile = playlistForm.musica.files[0];
+      const isPublica = publicaCheck.checked;
 
-    Vibrant.from(p.capa).getPalette().then((palette) => {
-      document.getElementById("player").style.backgroundColor = palette.Vibrant.getHex();
-    });
-  }
+      if (!nomeMusicaVal || !capaFile || !musicaFile) {
+        alert("Preencha todos os campos!");
+        return;
+      }
 
-  // Salvar nome do perfil
-  saveNameBtn.onclick = async () => {
-    const user = auth.currentUser;
-    const novoNome = userNameInput.value.trim();
-    if (user && novoNome) {
-      await user.updateProfile({ displayName: novoNome });
-      alert("Nome atualizado com sucesso!");
+      try {
+        const btn = playlistForm.querySelector("button[type='submit']");
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+        uploadProgress.textContent = "Enviando capa...";
+
+        const timestamp = Date.now();
+        const capaRef = storage.ref(`capas/${timestamp}_${capaFile.name}`);
+        const musicaRef = storage.ref(`musicas/${timestamp}_${musicaFile.name}`);
+
+        // Upload capa com progresso
+        await new Promise((resolve, reject) => {
+          const uploadTask = capaRef.put(capaFile);
+          uploadTask.on('state_changed', 
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              uploadProgress.textContent = `Enviando capa: ${progress.toFixed(0)}%`;
+            },
+            (error) => reject(error),
+            () => resolve()
+          );
+        });
+
+        uploadProgress.textContent = "Enviando música...";
+
+        // Upload música com progresso
+        await new Promise((resolve, reject) => {
+          const uploadTask = musicaRef.put(musicaFile);
+          uploadTask.on('state_changed', 
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              uploadProgress.textContent = `Enviando música: ${progress.toFixed(0)}%`;
+            },
+            (error) => reject(error),
+            () => resolve()
+          );
+        });
+
+        const capaURL = await capaRef.getDownloadURL();
+        const musicaURL = await musicaRef.getDownloadURL();
+
+        await db.collection("playlists").add({
+          uid: userUID,
+          nome: nomeMusicaVal,
+          artista: currentUser.displayName || "Anônimo",
+          capa: capaURL,
+          musica: musicaURL,
+          publica: isPublica
+        });
+
+        alert("Playlist criada com sucesso!");
+        playlistForm.reset();
+        uploadProgress.textContent = "";
+        setActiveTab("biblioteca");
+        loadPlaylists();
+
+      } catch (error) {
+        console.error("Erro ao criar playlist:", error);
+        alert("Erro ao criar playlist: " + error.message);
+        uploadProgress.textContent = "";
+      } finally {
+        const btn = playlistForm.querySelector("button[type='submit']");
+        btn.disabled = false;
+        btn.textContent = "Criar Playlist";
+      }
+    };
+
+    // Carrega playlists da sua biblioteca e públicas
+    async function loadPlaylists() {
+      try {
+        const snapshot = await db.collection("playlists").orderBy("nome").get();
+        musicList.innerHTML = "";
+        if (snapshot.empty) {
+          musicList.innerHTML = "<p>Nenhuma playlist encontrada.</p>";
+          return;
+        }
+        snapshot.forEach(doc => {
+          const p = doc.data();
+          if (p.uid === userUID || p.publica) {
+            const div = document.createElement("div");
+            div.className = "bg-gray-800 p-3 rounded flex items-center gap-3 cursor-pointer hover:bg-gray-700";
+            div.innerHTML = `
+              <img src="${p.capa}" class="w-14 h-14 rounded" />
+              <div>
+                <p class="font-bold">${p.nome}</p>
+                <p class="text-sm text-gray-400">${p.artista}</p>
+              </div>
+            `;
+            div.onclick = () => playMusic(p);
+            musicList.appendChild(div);
+          }
+        });
+      } catch (e) {
+        console.error("Erro ao carregar playlists:", e);
+        musicList.innerHTML = "<p>Erro ao carregar playlists.</p>";
+      }
     }
-  };
 
-  logoutBtn.onclick = () => {
-    auth.signOut();
-  };
+    // Tocar música no player
+    function playMusic(p) {
+      audio.src = p.musica;
+      nomeMusica.textContent = p.nome;
+      nomeArtista.textContent = p.artista || "-";
+      capa.src = p.capa;
+      audio.play();
+      player.classList.remove("hidden");
 
-  document.getElementById("profileBtn").onclick = () => {
-    document.getElementById("profileModal").classList.remove("hidden");
-  };
+      // Mudar cor fundo player pela capa
+      Vibrant.from(p.capa).getPalette()
+        .then(palette => {
+          if (palette.Vibrant) {
+            player.style.backgroundColor = palette.Vibrant.getHex();
+          } else {
+            player.style.backgroundColor = "#282828";
+          }
+        }).catch(() => {
+          player.style.backgroundColor = "#282828";
+        });
+    }
 
-  document.getElementById("closeProfile").onclick = () => {
-    document.getElementById("profileModal").classList.add("hidden");
-  };
+  </script>
 
-  // Função para mudar abas
-  function setActiveTab(tabName) {
-    document.querySelectorAll(".tab-button").forEach(btn => {
-      btn.classList.toggle("active", btn.getAttribute("data-tab") === tabName);
-    });
-    document.querySelectorAll(".tab-content").forEach(sec => {
-      sec.classList.toggle("active", sec.id === "tab-" + tabName);
-    });
-  }
-
-  document.querySelectorAll(".tab-button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      setActiveTab(btn.getAttribute("data-tab"));
-    });
-  });
-</script>
 </body>
 </html>
