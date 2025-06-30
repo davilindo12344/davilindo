@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -13,7 +12,7 @@
       color: white;
       font-family: 'Spotify Circular', Arial, sans-serif;
       margin: 0;
-      padding-bottom: 80px;
+      padding-bottom: 80px; /* para o player fixo */
     }
     nav {
       background: #000;
@@ -121,6 +120,7 @@
     .hidden {
       display: none !important;
     }
+    /* Scrollbar custom */
     ::-webkit-scrollbar {
       width: 8px;
       height: 8px;
@@ -136,8 +136,432 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
-<!-- Conteúdo omitido por brevidade: será colado com todas as alterações -->
-<!-- O conteúdo completo inclui o HTML anterior com as modificações para imagem de perfil -->
 
+  <header style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; background:#000;">
+    <h1 style="font-weight:bold; font-size:1.4rem; user-select:none;">Spotify do Davi</h1>
+    <button id="profileBtn" title="Perfil" style="background:none; border:none; color:#b3b3b3; cursor:pointer; font-size:18px;">
+      <i class="fas fa-user-circle"></i>
+    </button>
+  </header>
+
+  <!-- Modal perfil -->
+  <div id="profileModal">
+    <div id="profileContent">
+      <h2>Perfil</h2>
+      <p id="userEmailDisplay" style="font-weight:bold; margin-top:10px;"></p>
+      <input type="text" id="userNicknameInput" placeholder="Alterar apelido" />
+      <button id="updateNicknameBtn" style="background:#1db954; border:none; color:#000; padding:8px 12px; border-radius:20px; cursor:pointer;">Salvar Apelido</button>
+      <button id="logoutBtn" style="background:#e22134; border:none; color:#fff; padding:8px 12px; border-radius:20px; cursor:pointer; margin-top:10px;">Sair</button>
+      <br />
+      <button id="closeProfile" style="background:none; border:none; color:#b3b3b3; margin-top:10px; cursor:pointer; text-decoration:underline;">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Conteúdo das abas -->
+  <main>
+    <!-- Aba Início -->
+    <section id="homeTab">
+      <h2 style="font-weight:bold; margin-bottom:10px;">Início</h2>
+      <p>Bem-vindo! Aqui vão suas playlists e músicas públicas.</p>
+      <div id="publicPlaylists" style="margin-top:12px; display:flex; flex-wrap:wrap; gap:12px;"></div>
+    </section>
+
+    <!-- Aba Buscar -->
+    <section id="searchTab" class="hidden">
+      <h2 style="font-weight:bold; margin-bottom:10px;">Buscar</h2>
+      <input id="searchInput" placeholder="Buscar música ou playlist" style="width:100%; padding:8px; border-radius:6px; border:none; background:#222; color:white; margin-bottom:16px;"/>
+      <div id="searchResults" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
+    </section>
+
+    <!-- Aba Biblioteca -->
+    <section id="libraryTab" class="hidden">
+      <h2 style="font-weight:bold; margin-bottom:10px;">Sua Biblioteca</h2>
+      <div id="userPlaylists" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
+    </section>
+
+    <!-- Aba Criar -->
+    <section id="createTab" class="hidden">
+      <h2 style="font-weight:bold; margin-bottom:10px;">Criar Playlist</h2>
+      <form id="playlistForm" style="display:flex; flex-direction:column; gap:12px; max-width:400px;">
+        <input type="text" name="nome" placeholder="Nome da música" required style="padding:8px; border-radius:6px; border:none; background:#222; color:white;" />
+        <input type="file" name="capa" accept="image/*" required style="color:#b3b3b3;" />
+        <input type="file" name="musica" accept="audio/*" required style="color:#b3b3b3;" />
+        <label style="display:flex; align-items:center; gap:8px; color:#b3b3b3;">
+          <input type="checkbox" id="publica" />
+          Tornar playlist pública
+        </label>
+        <button type="submit" style="background:#1db954; border:none; color:#000; padding:12px; border-radius:20px; cursor:pointer; font-weight:bold;">
+          Criar Playlist
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Player fixo -->
+  <footer id="player" class="hidden">
+    <img id="capa" alt="Capa" />
+    <div class="info">
+      <p id="nomeMusica" title=""></p>
+      <p id="nomeArtista" style="color:#b3b3b3; font-size:14px;">-</p>
+      <input id="progress" type="range" min="0" value="0" step="1" />
+    </div>
+    <div class="controls">
+      <button id="playPauseBtn" title="Tocar / Pausar" style="background:none; border:none; color:#1db954; font-size:20px; cursor:pointer;">
+        <i class="fas fa-play"></i>
+      </button>
+    </div>
+    <audio id="audio"></audio>
+  </footer>
+
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+  <script>
+    // Config Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7n1M1DFVZrkOqEB6WAlTeg_qL4yYvTxs",
+      authDomain: "spotify-eaac3.firebaseapp.com",
+      projectId: "spotify-eaac3",
+      storageBucket: "spotify-eaac3.appspot.com",
+      messagingSenderId: "262950105793",
+      appId: "1:262950105793:web:87ca0380049c7de4649a40",
+      measurementId: "G-4LCHFJSH37"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // Elementos UI
+    const profileBtn = document.getElementById("profileBtn");
+    const profileModal = document.getElementById("profileModal");
+    const closeProfileBtn = document.getElementById("closeProfile");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userEmailDisplay = document.getElementById("userEmailDisplay");
+    const userNicknameInput = document.getElementById("userNicknameInput");
+    const updateNicknameBtn = document.getElementById("updateNicknameBtn");
+
+    const homeTab = document.getElementById("homeTab");
+    const searchTab = document.getElementById("searchTab");
+    const libraryTab = document.getElementById("libraryTab");
+    const createTab = document.getElementById("createTab");
+
+    // Player Elements
+    const playerFooter = document.getElementById("player");
+    const capaImg = document.getElementById("capa");
+    const nomeMusicaEl = document.getElementById("nomeMusica");
+    const nomeArtistaEl = document.getElementById("nomeArtista");
+    const progressBar = document.getElementById("progress");
+    const playPauseBtn = document.getElementById("playPauseBtn");
+    const audioEl = document.getElementById("audio");
+
+    // Form
+    const playlistForm = document.getElementById("playlistForm");
+    const publicaCheck = document.getElementById("publica");
+
+    let currentUser = null;
+    let userUID = null;
+    let currentPlaying = null;
+    let isPlaying = false;
+
+    // Navegação abas
+    function hideAllTabs() {
+      homeTab.classList.add("hidden");
+      searchTab.classList.add("hidden");
+      libraryTab.classList.add("hidden");
+      createTab.classList.add("hidden");
+    }
+
+    function setActiveTab(tab) {
+      hideAllTabs();
+      tab.classList.remove("hidden");
+    }
+
+    // Criar nav dinamicamente para reutilizar no PC e celular
+    function createNav() {
+      const nav = document.createElement("nav");
+      nav.id = "mainNav";
+
+      const buttons = [
+        {id: "navHome", icon: "fa-home", text: "Início", tab: homeTab},
+        {id: "navSearch", icon: "fa-search", text: "Buscar", tab: searchTab},
+        {id: "navLibrary", icon: "fa-book", text: "Biblioteca", tab: libraryTab},
+        {id: "navCreate", icon: "fa-plus-square", text: "Criar", tab: createTab},
+      ];
+
+      buttons.forEach(({id, icon, text, tab}) => {
+        const btn = document.createElement("button");
+        btn.id = id;
+        btn.innerHTML = `<i class="fas ${icon}"></i><span>${text}</span>`;
+        btn.addEventListener("click", () => {
+          setActiveTab(tab);
+          document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+        });
+        nav.appendChild(btn);
+      });
+
+      document.body.appendChild(nav);
+
+      // Ativar primeira aba por padrão
+      document.getElementById("navHome").classList.add("active");
+    }
+
+    // Mostrar modal perfil
+    profileBtn.onclick = () => profileModal.classList.add("active");
+    closeProfileBtn.onclick = () => profileModal.classList.remove("active");
+    logoutBtn.onclick = () => auth.signOut();
+
+    // Atualizar apelido (displayName)
+    updateNicknameBtn.onclick = async () => {
+      const newNickname = userNicknameInput.value.trim();
+      if (!newNickname) {
+        alert("Informe um apelido válido.");
+        return;
+      }
+      try {
+        await currentUser.updateProfile({ displayName: newNickname });
+        alert("Apelido atualizado!");
+        userNicknameInput.value = "";
+        userNicknameInput.placeholder = newNickname;
+        loadUserInfo();
+      } catch(e) {
+        alert("Erro ao atualizar apelido: " + e.message);
+      }
+    };
+
+    // Carregar info usuário (email e apelido)
+    function loadUserInfo() {
+      if (!currentUser) return;
+      userEmailDisplay.textContent = currentUser.email || "";
+      userNicknameInput.placeholder = currentUser.displayName || "Sem apelido";
+    }
+
+    // Autenticação Google Firebase
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = user;
+        userUID = user.uid;
+        loadUserInfo();
+        loadPublicPlaylists();
+        loadUserPlaylists();
+        setActiveTab(homeTab);
+        playerFooter.classList.add("hidden");
+      } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try {
+          await auth.signInWithPopup(provider);
+        } catch (e) {
+          alert("Erro no login: " + e.message);
+        }
+      }
+    });
+
+    // Criar playlist
+    playlistForm.onsubmit = async (e) => {
+      e.preventDefault();
+      if (!currentUser) {
+        alert("Faça login antes de criar playlists.");
+        return;
+      }
+
+      const nomeMusica = playlistForm.nome.value.trim();
+      const capaFile = playlistForm.capa.files[0];
+      const musicaFile = playlistForm.musica.files[0];
+      const isPublica = publicaCheck.checked;
+
+      if (!nomeMusica || !capaFile || !musicaFile) {
+        alert("Preencha todos os campos!");
+        return;
+      }
+
+      try {
+        const btn = playlistForm.querySelector("button[type='submit']");
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+
+        const timestamp = Date.now();
+        const capaRef = storage.ref(`capas/${timestamp}_${capaFile.name}`);
+        const musicaRef = storage.ref(`musicas/${timestamp}_${musicaFile.name}`);
+
+        await capaRef.put(capaFile);
+        await musicaRef.put(musicaFile);
+
+        const capaURL = await capaRef.getDownloadURL();
+        const musicaURL = await musicaRef.getDownloadURL();
+
+        await db.collection("playlists").add({
+          uid: userUID,
+          nome: nomeMusica,
+          artista: currentUser.displayName || "Anônimo",
+          capa: capaURL,
+          musica: musicaURL,
+          publica: isPublica,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert("Playlist criada com sucesso!");
+        playlistForm.reset();
+        loadPublicPlaylists();
+        loadUserPlaylists();
+        setActiveTab(libraryTab);
+      } catch (error) {
+        console.error("Erro ao criar playlist:", error);
+        alert("Erro ao criar playlist: " + error.message);
+      } finally {
+        const btn = playlistForm.querySelector("button[type='submit']");
+        btn.disabled = false;
+        btn.textContent = "Criar Playlist";
+      }
+    };
+
+    // Carregar playlists públicas para aba Início
+    async function loadPublicPlaylists() {
+      const snapshot = await db.collection("playlists").where("publica", "==", true).orderBy("timestamp", "desc").get();
+      const container = document.getElementById("publicPlaylists");
+      container.innerHTML = "";
+      snapshot.forEach(doc => {
+        const p = doc.data();
+        container.appendChild(createPlaylistCard(p));
+      });
+    }
+
+    // Carregar playlists do usuário para aba Biblioteca
+    async function loadUserPlaylists() {
+      if (!userUID) return;
+      const snapshot = await db.collection("playlists").where("uid", "==", userUID).orderBy("timestamp", "desc").get();
+      const container = document.getElementById("userPlaylists");
+      container.innerHTML = "";
+      snapshot.forEach(doc => {
+        const p = doc.data();
+        container.appendChild(createPlaylistCard(p));
+      });
+    }
+
+    // Criar card playlist clicável
+    function createPlaylistCard(playlist) {
+      const div = document.createElement("div");
+      div.style.background = "#181818";
+      div.style.borderRadius = "8px";
+      div.style.padding = "8px";
+      div.style.width = "150px";
+      div.style.cursor = "pointer";
+      div.style.userSelect = "none";
+
+      const img = document.createElement("img");
+      img.src = playlist.capa;
+      img.alt = playlist.nome;
+      img.style.width = "100%";
+      img.style.borderRadius = "8px";
+
+      const pName = document.createElement("p");
+      pName.textContent = playlist.nome;
+      pName.style.marginTop = "8px";
+      pName.style.fontWeight = "bold";
+      pName.style.whiteSpace = "nowrap";
+      pName.style.overflow = "hidden";
+      pName.style.textOverflow = "ellipsis";
+
+      div.appendChild(img);
+      div.appendChild(pName);
+
+      div.onclick = () => playMusic(playlist);
+
+      return div;
+    }
+
+    // Função para tocar música
+    function playMusic(p) {
+      currentPlaying = p;
+      audioEl.src = p.musica;
+      nomeMusicaEl.textContent = p.nome;
+      nomeMusicaEl.title = p.nome;
+      nomeArtistaEl.textContent = p.artista || "-";
+      capaImg.src = p.capa;
+      playerFooter.classList.remove("hidden");
+
+      audioEl.play();
+      isPlaying = true;
+      updatePlayPauseIcon();
+
+      Vibrant.from(p.capa).getPalette().then(palette => {
+        const vibrant = palette.Vibrant ? palette.Vibrant.getHex() : "#1db954";
+        playerFooter.style.backgroundColor = vibrant;
+      });
+    }
+
+    // Controle play/pause
+    playPauseBtn.onclick = () => {
+      if (!audioEl.src) return;
+      if (isPlaying) {
+        audioEl.pause();
+        isPlaying = false;
+      } else {
+        audioEl.play();
+        isPlaying = true;
+      }
+      updatePlayPauseIcon();
+    };
+
+    function updatePlayPauseIcon() {
+      playPauseBtn.innerHTML = isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+    }
+
+    // Atualiza barra de progresso conforme música toca
+    audioEl.ontimeupdate = () => {
+      progressBar.value = audioEl.currentTime;
+    };
+    audioEl.onloadedmetadata = () => {
+      progressBar.max = audioEl.duration;
+    };
+
+    // Controle barra de progresso
+    progressBar.oninput = () => {
+      audioEl.currentTime = progressBar.value;
+    };
+
+    // Busca simples por nome (música ou playlist)
+    const searchInput = document.getElementById("searchInput");
+    const searchResults = document.getElementById("searchResults");
+
+    searchInput.addEventListener("input", async () => {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        searchResults.innerHTML = "";
+        return;
+      }
+      // Busca playlists públicas cujo nome ou artista contenha a query
+      const snapshot = await db.collection("playlists")
+        .where("publica", "==", true)
+        .orderBy("timestamp", "desc")
+        .get();
+
+      const filtered = [];
+      snapshot.forEach(doc => {
+        const p = doc.data();
+        if ((p.nome.toLowerCase().includes(q)) || (p.artista && p.artista.toLowerCase().includes(q))) {
+          filtered.push(p);
+        }
+      });
+
+      searchResults.innerHTML = "";
+      if (filtered.length === 0) {
+        searchResults.textContent = "Nenhum resultado encontrado.";
+        return;
+      }
+      filtered.forEach(p => {
+        searchResults.appendChild(createPlaylistCard(p));
+      });
+    });
+
+    // Criar a nav ao carregar a página
+    window.onload = () => {
+      createNav();
+    };
+  </script>
 </body>
 </html>
